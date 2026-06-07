@@ -1,0 +1,53 @@
+# GitHub Actions workflow for a Python load-analytics service.
+# Eval fixture for the performance-audit skill (illustrative; NOT a live workflow —
+# lives under test-fixtures/). Answer key in expected-findings.md — assessor-only;
+# do not read it when auditing this fixture.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: ruff check .
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ github.sha }}
+      - run: pip install -r requirements.txt
+      - run: pytest
+        continue-on-error: true
+
+  build-image:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t analytics:latest .
+
+  deploy:
+    needs: build-image
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./deploy.sh
