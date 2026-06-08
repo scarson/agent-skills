@@ -16,9 +16,9 @@ A plugin is a cohesive bundle of skills that install together. It might be one s
 
 | Plugin | Skills |
 |---|---|
-| `utility` | `url-to-markdown` |
 | `project-setup` | `claude-agents-md-init`, `git-strategy-init`, `pitfalls-docs-init`, `project-init` |
 | `superpowers-plus` | `build-robust-features`, `bug-hunt-cycle`, `bug-hunter-differential`, `bug-hunter-exploratory`, `bug-hunter-holistic`, `bug-hunter-multipass`, `handoff`, `health-review-cycle`, `performance-audit`, `performance-audit-cycle`, `plan-review-cycle`, `project-health-review`, `writing-plans-enhanced` |
+| `utility` | `url-to-markdown` |
 
 ## What's here
 
@@ -155,25 +155,25 @@ Consumers install plugins individually. You don't have to take everything in the
 |---|---|
 | Your own machine, personal use | `scripts/install.ps1` / `install.sh` (junctions) — simplest, live edits reflect immediately |
 | Iterating on plugin manifests | Local-path marketplace install — exercises the manifest wiring |
-| Sharing with a collaborator (private repo) | GitHub URL (Claude Code) or clone + local path (Codex) |
-| Public distribution | GitHub URL (Claude Code); clone + local path (Codex, until URL install ships) |
+| Sharing with a collaborator (private repo) | GitHub URL or shorthand — works for both Claude Code and Codex |
+| Public distribution | GitHub URL or shorthand — works for both Claude Code and Codex |
 
 ### Local path vs GitHub URL
 
-Claude Code's `/plugin marketplace add` accepts both a local directory path and a GitHub URL:
+Both Claude Code's `/plugin marketplace add` and Codex's `codex plugin marketplace add` accept either a local directory path or a GitHub URL/shorthand:
 
-- **Local path** — agent reads from the source tree. Edits are live; no cache layer. Required for Codex today (it has no URL-install equivalent).
-- **GitHub URL** — Claude Code clones into `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`. Updates require an explicit refresh. Enables sharing without giving collaborators filesystem paths.
+- **Local path** — the agent reads from the source tree. Edits are live; no cache layer.
+- **GitHub URL / shorthand** — the agent clones the repo (Claude Code caches under `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`). Updates require an explicit refresh. Enables sharing without giving collaborators filesystem paths.
 
 ### Claude Code
 
 **Add the marketplace, then install whichever plugins you want:**
 
 ```
-/plugin marketplace add C:\Users\Sam\Code\agent-skills
-/plugin install utility@scarson-skills
+/plugin marketplace add C:\Users\<you>\Code\agent-skills
 /plugin install project-setup@scarson-skills
 /plugin install superpowers-plus@scarson-skills
+/plugin install utility@scarson-skills
 ```
 
 Or from GitHub (public or private):
@@ -203,64 +203,72 @@ After that succeeds, the Claude Code install succeeds too.
 
 ### Codex
 
-Codex's plugin system (as of 2026-04-20) supports **local marketplace files only** — no native GitHub-URL install equivalent yet. Both installation modes start with cloning the repo.
+Codex's `codex plugin marketplace add` accepts a GitHub shorthand (`owner/repo`), an HTTPS or SSH Git URL, or a local directory — so you can install straight from the public repo or from a local clone.
 
-**Repo-scoped install** — register the repo as a local marketplace, then install plugins from the TUI:
+**From GitHub:**
+
+```bash
+codex plugin marketplace add scarson/agent-skills
+# or: codex plugin marketplace add https://github.com/scarson/agent-skills.git
+codex
+# /plugins  →  Sam's Agent Skills  →  install project-setup, superpowers-plus, utility
+```
+
+**From a local clone** (live edits, no cache layer):
 
 ```bash
 git clone https://github.com/scarson/agent-skills.git ~/Code/agent-skills
 codex plugin marketplace add ~/Code/agent-skills
-codex
-# /plugins  →  Sam's Agent Skills  →  install utility, project-setup, etc.
 ```
 
-Alternatively, Codex auto-discovers `.agents/plugins/marketplace.json` when launched from inside the repo — launching `codex` from the clone directory has the same effect as the explicit `add`.
+Pin a branch or tag with `owner/repo@ref` or the `--ref` flag.
 
-**Private Codex install**: because Codex clones via plain `git`, the same credential-manager rules as Claude Code apply. If you can `git clone <private-url>` from a terminal, you can install the plugin.
+**Private repos:** because Codex clones via plain `git`, the same credential-manager rules as Claude Code apply. If you can `git clone <private-url>` from a terminal, you can install the plugin.
 
 ## Repo layout
 
 ```
 agent-skills/
 ├── plugins/                              # every plugin this repo publishes
-│   ├── utility/
+│   ├── project-setup/                    # CLAUDE.md/AGENTS.md, git strategy, pitfalls bootstrap
 │   │   ├── .claude-plugin/plugin.json    # Claude Code plugin manifest
 │   │   ├── .codex-plugin/plugin.json     # Codex plugin manifest
-│   │   └── skills/
-│   │       └── url-to-markdown/
-│   │           ├── SKILL.md              # required; name + description frontmatter
-│   │           ├── scripts/              # optional; helper code
-│   │           ├── references/           # optional; read-on-demand docs
-│   │           └── agents/openai.yaml    # optional; Codex UI metadata
-│   ├── project-setup/                    # CLAUDE.md/AGENTS.md, git strategy, pitfalls bootstrap
-│   │   ├── .claude-plugin/plugin.json
-│   │   ├── .codex-plugin/plugin.json
 │   │   └── skills/
 │   │       ├── claude-agents-md-init/
 │   │       ├── git-strategy-init/
 │   │       ├── pitfalls-docs-init/
 │   │       └── project-init/             # one-command wrapper around the three above
-│   └── superpowers-plus/                 # workflow orchestration (10 skills)
+│   ├── superpowers-plus/                 # workflow orchestration (13 skills)
+│   │   ├── .claude-plugin/plugin.json
+│   │   ├── .codex-plugin/plugin.json
+│   │   ├── README.md                     # plugin-level overview
+│   │   └── skills/
+│   │       ├── build-robust-features/    # design → plan → execute chain
+│   │       ├── bug-hunt-cycle/           # full bug-hunt workflow (composes the 4 hunters)
+│   │       ├── bug-hunter-differential/  # hunter methodology — paired-function invariants
+│   │       ├── bug-hunter-exploratory/   # hunter methodology — depth-first
+│   │       ├── bug-hunter-holistic/      # hunter methodology — read-everything-then-reason
+│   │       ├── bug-hunter-multipass/     # hunter methodology — five focused passes
+│   │       ├── handoff/                  # structured session handoff
+│   │       ├── health-review-cycle/      # full health-review workflow (wraps project-health-review)
+│   │       ├── performance-audit/        # multi-lane performance review + execution-cost map
+│   │       ├── performance-audit-cycle/  # full performance-audit workflow (wraps performance-audit)
+│   │       ├── plan-review-cycle/        # adversarial multi-round plan review
+│   │       ├── project-health-review/    # five-axis adversarial dispatch
+│   │       └── writing-plans-enhanced/   # subagent-proofed plans + Living Document Contract
+│   └── utility/
 │       ├── .claude-plugin/plugin.json
 │       ├── .codex-plugin/plugin.json
-│       ├── README.md                     # plugin-level overview
 │       └── skills/
-│           ├── build-robust-features/    # design → plan → execute chain
-│           ├── bug-hunt-cycle/           # full bug-hunt workflow (composes the 4 hunters)
-│           ├── bug-hunter-differential/  # hunter methodology — paired-function invariants
-│           ├── bug-hunter-exploratory/   # hunter methodology — depth-first
-│           ├── bug-hunter-holistic/      # hunter methodology — read-everything-then-reason
-│           ├── bug-hunter-multipass/     # hunter methodology — five focused passes
-│           ├── handoff/                  # structured session handoff
-│           ├── health-review-cycle/      # full health-review workflow (wraps project-health-review)
-│           ├── plan-review-cycle/        # adversarial multi-round plan review
-│           ├── project-health-review/    # five-axis adversarial dispatch
-│           └── writing-plans-enhanced/   # subagent-proofed plans + Living Document Contract
+│           └── url-to-markdown/
+│               ├── SKILL.md              # required; name + description frontmatter
+│               ├── scripts/              # optional; helper code
+│               ├── references/           # optional; read-on-demand docs
+│               └── agents/openai.yaml    # optional; Codex UI metadata
 ├── .claude-plugin/
 │   └── marketplace.json                  # Claude Code marketplace catalog
 ├── .agents/plugins/
 │   └── marketplace.json                  # Codex marketplace catalog
-├── docs/                                 # design docs and plans
 └── scripts/
     ├── install.ps1                       # Windows installer (junctions)
     └── install.sh                        # macOS/Linux/WSL installer (symlinks)

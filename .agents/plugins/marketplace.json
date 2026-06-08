@@ -5,18 +5,6 @@
   },
   "plugins": [
     {
-      "name": "utility",
-      "source": {
-        "source": "local",
-        "path": "./plugins/utility"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "project-setup",
       "source": {
         "source": "local",
@@ -33,6 +21,18 @@
       "source": {
         "source": "local",
         "path": "./plugins/superpowers-plus"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "utility",
+      "source": {
+        "source": "local",
+        "path": "./plugins/utility"
       },
       "policy": {
         "installation": "AVAILABLE",
