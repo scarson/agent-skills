@@ -1,6 +1,6 @@
 ---
 name: plan-review-cycle
-description: Use after writing an implementation plan, before committing. Adversarial review for subagent-readiness — checks ambiguity, context gaps, interpretation drift, cross-task conflicts, and pitfall coverage across a minimum of 3 rounds (more if any round still finds substantive issues).
+description: Use after writing an implementation plan, before committing. Adversarial review for subagent-readiness — checks ambiguity, context gaps, interpretation drift, cross-task conflicts, and pitfall coverage across a minimum of 3 rounds that alternate the author's self-review with an independent, ideally cross-model adversarial reviewer (more rounds if any still finds substantive issues).
 ---
 
 # Plan Review Cycle
@@ -52,42 +52,65 @@ exist, the runner SHOULD note that absence in the round's findings. If
 the doc is read, the runner MUST add warnings to any task that risks
 falling into a documented pitfall. Common traps:
 - Testing mock behavior instead of real behavior
-- Missing AOT verification
-- Substring assertions instead of structural JSON checks
+- Asserting on substrings or log text instead of structural/semantic checks
+- Covering only the happy path, never the error branches
+- Tests coupled to implementation details (exact SQL, ordering, internal call sequences) that break on a behavior-preserving refactor
 
 **Implementation pitfalls** — If `docs/pitfalls/implementation-pitfalls.md`
 (or the project's equivalent) exists, the runner MUST read it. If it
 doesn't exist, the runner SHOULD note that absence in the round's
 findings. If the doc is read, the runner MUST add warnings to any task
 that risks falling into a documented pitfall. Common:
-- AOT-unsafe types in serialization contexts
-- Pre-signed URL auth header leaks
-- Hand-built JSON without escaping
+- Swallowed errors, or errors that lose their original context
+- Unvalidated external input flowing into a query, command, or template
+- Building structured output (JSON, SQL, HTML, shell) by string concatenation without escaping
+- Secrets leaking into logs, URLs, or request headers
+- Resources never released: handles, connections, threads/goroutines
+
+### Who runs each round
+
+Rounds alternate between the runner and an **independent adversarial reviewer subagent**, so the plan is never reviewed only by the same context that wrote or last edited it — a self-review shares the very blind spots that produced the gaps.
+
+- **Odd rounds (1, 3, 5, …): the runner** reviews the plan directly and fixes what it finds.
+- **Even rounds (2, 4, …): the reviewer subagent.** It reviews the plan against the dimension checklist above and returns findings only — it MUST NOT edit the plan; the runner applies the fixes, since it owns the plan file.
+
+**Fresh vs. persistent reviewer — choose by plan type.** The reviewer can be dispatched two ways, and the right one depends on the plan:
+
+- **Fresh each round (maximum decorrelation).** A new subagent with **no conversation history** reads the plan cold every even round. A cold reader *is* the fresh, no-history subagent these dimensions exist to protect — the strongest catch for blind spots the author has normalized. Best for broad or straightforward plans — and for the *first* independent round regardless, since you want at least one genuinely cold read.
+- **Persistent across rounds (sustained dialectic).** The *same* reviewer subagent carries its history forward and goes back and forth with the runner. The accumulated context sharpens both sides — the reviewer gets deep on this plan's specific subtleties and the rationale behind each fix, surfacing second-order issues a cold reader would miss. Best for intricate or subtle plans where the value is in a sustained dialogue. Trade-off: a persistent reviewer slowly absorbs the runner's framing, so its independence erodes over rounds — counter it by keeping at least one cold read in the mix (e.g. fresh first independent round, persistent after) or by re-dispatching cold periodically.
+
+**At least one even round SHOULD use a leading model from a different provider** than the one running this skill (typically Claude ↔ OpenAI/Codex) when the environment offers a cross-provider primitive. Same-provider models share training-data blind spots, so a decorrelated second opinion is where independent review earns its keep. Use whatever cross-provider mechanism the environment provides, and fall back exactly as [`build-robust-features`](../build-robust-features/SKILL.md) Step 2 describes — don't reimplement that logic here.
+
+**Reviewer model selection.** The reviewer subagent SHOULD run on the **latest available Claude Opus model** or **GPT-5 (or successor) at x-high reasoning effort**, unless the user has instructed otherwise — plan review is correctness-critical and benefits asymmetrically from maximum reasoning bandwidth.
+
+**If subagent dispatch is genuinely unavailable** in the environment, the runner MAY run all rounds itself, but MUST note in the final summary that every round was a self-review, so the independence the alternation provides was not achieved.
 
 ### Round execution
 
-For each round, the runner MUST:
+For each round, the reviewer for that round (the runner, or the subagent on even rounds) MUST:
 
 1. Read the plan end-to-end
 2. Check every dimension above
 3. Note each finding with location (Task N, specific text)
-4. Fix all findings in the plan
-5. Record the round number and finding count
+4. Fix all findings in the plan — on subagent rounds the subagent returns its findings and the runner applies the fixes, reviewing each before it lands (the runner owns the plan file)
+5. Record the round number, who reviewed it, and the finding count
 
 ### Completion criteria
 
-- Round 1: expect 5+ findings (plans always have gaps on first review)
-- Round 2: expect 2-3 findings (residual from fixes in round 1)
-- Round 3: expect 1-2 (second-order effects of prior fixes)
+- Round 1 (runner): expect 5+ findings (plans always have gaps on first review)
+- Round 2 (independent reviewer): residual from round 1's fixes **plus** whatever the independent reviewer surfaces that the author missed — this can rival round 1, which is the point
+- Round 3 (runner): second-order effects of the prior fixes
 - Round 4: if 0 findings, the runner MAY stop. If any findings remain, the runner MUST run another round.
 - Round 5+: the runner MUST continue running rounds until one produces 0 findings.
+
+An independent or cross-model round can legitimately push the finding count back up — the independent reviewer surfaces gaps the author normalized away. That's the mechanism working, not a regression: keep alternating and running rounds until one genuinely lands at 0.
 
 If round 1 produces 0 findings, the runner is not looking hard enough.
 The runner MUST re-read the dimensions and run round 1 again.
 
 ### After completion
 
-The runner SHOULD log observations about plan quality and recurring patterns to a private journal (or whatever pattern-store the project uses — an MCP journal, a `gstack-learn`-style command, a dated `docs/learnings/` file, etc.). Capture:
+The runner SHOULD record observations about plan quality and recurring patterns in the project's **memory system**. Prefer a store the project has deliberately set up — a dated `docs/learnings/` file, a `gstack-learn`-style command, or an MCP journal (e.g. obra's private-journal) — since its presence signals where the team wants this kind of record to live. Failing that, fall back to the agent's own native memory (e.g. Claude's `MEMORY.md` / project memory, Codex's equivalent), which most harnesses provide. If neither is apparent, the runner MUST surface the observations to the user in the session and ask whether — and where — to record them; it MUST NOT silently drop them. When recording, capture:
 
 - **Type:** pattern
 - **Key:** `plan-review-[slug]`
