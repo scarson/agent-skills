@@ -1,6 +1,6 @@
 {
   "$schema": "https://code.claude.com/schemas/marketplace.json",
-  "name": "scarson-skills",
+  "name": "scarson-agent-skills",
   "owner": {
     "name": "Samuel Carson",
     "url": "https://github.com/scarson"

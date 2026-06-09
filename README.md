@@ -1,16 +1,16 @@
 # agent-skills
 
-Sam Carson's personal agent skills library. A marketplace of installable plugins, each bundling one or more skills. Portable across [Claude Code](https://claude.com/claude-code) and [Codex](https://developers.openai.com/codex) via the shared `skills/<name>/SKILL.md` convention.
+Sam Carson's personal agent skills library — a marketplace of installable plugins, each bundling one or more skills. Portable across [Claude Code](https://claude.com/claude-code) and [Codex](https://developers.openai.com/codex) via the shared `skills/<name>/SKILL.md` convention.
 
 ## Architecture
 
 The repo is organized in three nesting levels:
 
 - **marketplace** (the repo itself) — a catalog that lists every plugin it publishes
-- **plugin** (`plugins/<plugin-name>/`) — the unit of distribution; consumers install or uninstall a whole plugin
+- **plugin** (`plugins/<plugin-name>/`) — the unit of distribution; you install or uninstall a whole plugin
 - **skill** (`plugins/<plugin-name>/skills/<skill-name>/`) — the unit of agent invocation; each skill is a directory with a `SKILL.md`
 
-A plugin is a cohesive bundle of skills that install together. It might be one standalone utility skill, or several tightly-coupled skills that co-evolve. Grouping is the skill author's call.
+A plugin is a cohesive bundle of skills that install together — one standalone utility, or several tightly-coupled skills that co-evolve.
 
 ### Current plugins
 
@@ -20,107 +20,110 @@ A plugin is a cohesive bundle of skills that install together. It might be one s
 | `superpowers-plus` | `build-robust-features`, `bug-hunt-cycle`, `bug-hunter-differential`, `bug-hunter-exploratory`, `bug-hunter-holistic`, `bug-hunter-multipass`, `handoff`, `health-review-cycle`, `performance-audit`, `performance-audit-cycle`, `plan-review-cycle`, `project-health-review`, `writing-plans-enhanced` |
 | `utility` | `url-to-markdown` |
 
-## What's here
+## Install
 
-- **`plugins/`** — the portable core. Each subdirectory is one plugin containing its own manifests and `skills/`. Both Claude Code and Codex discover skills from the `skills/<name>/SKILL.md` layout inside each plugin.
-- **`scripts/install.ps1`, `scripts/install.sh`** — repo-level installers that create junctions (Windows) or symlinks (macOS/Linux/WSL) for every skill in every plugin into the discovery paths for both agents.
-- **`.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`** — marketplace catalogs listing every plugin in this repo.
+There are two ways to install. **Use the marketplace method unless you have a specific reason not to** — it works the same on Claude Code and Codex and needs nothing but the repo URL. Install only the plugins you want; you don't have to take everything.
 
-## Install (personal use)
+### Method 1 — Marketplace (recommended)
 
-Clone the repo, then run the installer for your platform. It's idempotent — safe to re-run after adding new skills or plugins.
+**Claude Code** — add the marketplace, then install plugins:
+
+```
+/plugin marketplace add https://github.com/scarson/agent-skills
+/plugin install project-setup@scarson-agent-skills
+/plugin install superpowers-plus@scarson-agent-skills
+/plugin install utility@scarson-agent-skills
+```
+
+**Codex** — add the marketplace, then install from the `/plugins` menu:
+
+```bash
+codex plugin marketplace add scarson/agent-skills
+codex
+# /plugins → Sam's Agent Skills → install project-setup, superpowers-plus, utility
+```
+
+Codex can pin a branch or tag with `scarson/agent-skills@<ref>`. Restart the agent after installing so it discovers the new skills.
+
+### Method 2 — Clone and run the installer
+
+Choose this if you want to **edit skills locally and have changes take effect immediately**, with no cache layer in between. The installer creates directory junctions (Windows) or symlinks (macOS/Linux/WSL) from each agent's discovery path into your clone. It's idempotent — safe to re-run after adding skills or plugins.
 
 **Windows (PowerShell):**
 
 ```powershell
-git clone https://github.com/scarson/agent-skills.git C:\Users\<you>\Code\agent-skills
-cd C:\Users\<you>\Code\agent-skills
+git clone https://github.com/scarson/agent-skills.git
+cd agent-skills
 pwsh scripts/install.ps1
 ```
 
 **macOS / Linux / WSL (bash):**
 
 ```bash
-git clone https://github.com/scarson/agent-skills.git ~/Code/agent-skills
-cd ~/Code/agent-skills
+git clone https://github.com/scarson/agent-skills.git
+cd agent-skills
 bash scripts/install.sh
 ```
 
-Both scripts support `-DryRun` / `--dry-run` to preview without making changes, and `-Refresh` / `--refresh` to remove and recreate entries that point to a stale source (useful when a skill has moved between plugins, or when cleaning up after the Windows-bash failure mode below).
+Both scripts accept `-DryRun` / `--dry-run` (preview without changes) and `-Refresh` / `--refresh` (recreate entries that point at a stale source — handy after a skill moves between plugins). Restart the agent afterward.
 
-```powershell
-pwsh scripts/install.ps1 -Refresh   # Windows
-```
+#### Windows: use `install.ps1`, not `install.sh`
 
-```bash
-bash scripts/install.sh --refresh   # macOS/Linux/WSL
-```
+`install.sh` refuses to run on native Windows (MSYS / Cygwin / MINGW / git-bash). There, `ln -s` silently falls back to *copying* directories whenever the user lacks the `SeCreateSymbolicLink` privilege — the typical case without admin or Developer Mode. The script appears to succeed but creates real copies that drift from the repo on every edit. `install.ps1` uses native junctions via `cmd /c mklink /J`, which work without elevation. WSL bash is a real Linux kernel and is unaffected.
 
-After install, restart Claude Code and/or Codex so they rediscover skills.
+#### What the installer creates
 
-#### Why install.sh refuses to run on native Windows
-
-`install.sh` exits with an error on Windows MSYS / Cygwin / MINGW (git-bash) because `ln -s` there silently falls back to copying directories whenever the user lacks the `SeCreateSymbolicLink` privilege (the typical case without admin or Developer Mode). The script *appears* to succeed but actually creates real directory copies that drift from the source repo on every edit. Use `install.ps1` on Windows — it uses native directory junctions via `cmd /c mklink /J`, which work without elevated privileges. WSL bash is unaffected and works fine; that's a real Linux kernel.
-
-### What the installer creates
-
-For every skill in every plugin, the installer creates a junction/symlink in both discovery paths:
+For every skill in every plugin, a junction/symlink in both agents' discovery paths:
 
 ```
 ~/.claude/skills/<skill-name>   →  <repo>/plugins/<plugin>/skills/<skill-name>    (Claude Code)
 ~/.agents/skills/<skill-name>   →  <repo>/plugins/<plugin>/skills/<skill-name>    (Codex)
 ```
 
-The junction is named by **skill name**, not plugin name — agents discover skills, not plugins, via these paths. Plugin boundaries matter at marketplace-install time, not at junction-install time.
+Entries are named by **skill**, not plugin — agents discover skills, not plugins, via these paths.
 
-### Removing a skill (Windows safety)
+#### Removing a skill safely
 
-On Windows, junctions are reparse points — they look like directories but point elsewhere. **Never** use `rm -rf` from bash or git-bash on a junction: it will traverse into the target and delete the real files in this repo.
+On Windows, junctions are reparse points that look like directories but point elsewhere. **Never** `rm -rf` a junction from bash/git-bash — it traverses into the target and deletes the real files in the repo. Instead:
 
-Safe removal:
-- `rmdir "$HOME\.claude\skills\<skill-name>"` (cmd)
+- `rmdir "$HOME\.claude\skills\<skill-name>"` (cmd), or
 - `Remove-Item "$HOME\.claude\skills\<skill-name>"` (PowerShell, no `-Recurse`)
 
 On macOS/Linux, `rm ~/.claude/skills/<skill-name>` (no `-r`) removes just the symlink.
 
 ## Adding a new skill
 
-First decide which plugin it belongs to:
-
-- **Adding to an existing plugin** — put the skill under `plugins/<existing-plugin>/skills/<skill-name>/`.
-- **Creating a new plugin** — see [Adding a new plugin](#adding-a-new-plugin) below first, then add the skill inside it.
-
-Then:
+First decide which plugin it belongs to — an existing one (`plugins/<existing-plugin>/skills/`) or a new plugin (see [Adding a new plugin](#adding-a-new-plugin) first). Then:
 
 1. Create `plugins/<plugin>/skills/<skill-name>/SKILL.md` with YAML frontmatter:
 
    ```markdown
    ---
    name: <skill-name>
-   description: One-line description that explains exactly when this skill should trigger.
+   description: One line that explains exactly when this skill should trigger.
    ---
 
    Instructions for the agent. Keep them imperative and specific.
    ```
 
-2. Add any helper scripts to `plugins/<plugin>/skills/<skill-name>/scripts/` and references to `plugins/<plugin>/skills/<skill-name>/references/`.
+   Keep `description` under **1024 characters** — Codex rejects longer ones (Claude Code is lenient, so it won't catch the overflow for you). Pack it with trigger phrases; put detail in the body.
 
-3. Re-run `scripts/install.ps1` (or `install.sh`) to junction/symlink the new skill.
-
-4. Restart the agent(s) to pick up the new skill.
+2. Add helper code to `scripts/` and read-on-demand docs to `references/` inside the skill directory.
+3. If you installed via Method 2, re-run `scripts/install.ps1` / `install.sh` to junction the new skill. (Marketplace installs pick it up on the next update.)
+4. Restart the agent(s) to load it.
 
 ### Skill layout conventions
 
-Both Claude Code and Codex honor the [Agent Skills specification](https://github.com/openai/skills). Common optional subdirectories inside a skill:
+Both agents honor the [Agent Skills specification](https://github.com/openai/skills). Common optional subdirectories inside a skill:
 
 - `scripts/` — executable helpers the skill invokes
 - `references/` — documentation the skill reads on demand
 - `assets/` — templates, images, other static resources
-- `tests/` — test fixtures for the skill's own scripts
+- `tests/` — fixtures for the skill's own scripts
 
 ### Platform-specific metadata
 
-A skill can add optional Codex-specific metadata at `agents/openai.yaml` inside the skill directory for display name, brand color, and implicit-invocation policy. Claude Code ignores this file, so it's safe to include.
+A skill may add optional Codex metadata at `agents/openai.yaml` (display name, brand color, implicit-invocation policy). Claude Code ignores this file, so it's safe to include.
 
 ## Adding a new plugin
 
@@ -133,97 +136,12 @@ A skill can add optional Codex-specific metadata at `agents/openai.yaml` inside 
    └── skills/
    ```
 
-2. Copy and adapt the manifests from an existing plugin (e.g., `plugins/utility/`). Use kebab-case for the plugin name — both Codex and Claude Code require it.
-
+2. Copy and adapt the manifests from an existing plugin (e.g. `plugins/utility/`). Use kebab-case for the plugin name — both agents require it.
 3. Register the plugin in both marketplace catalogs:
-   - `.claude-plugin/marketplace.json` — add an entry to `plugins[]` with `"source": "./plugins/<plugin-name>"`.
+   - `.claude-plugin/marketplace.json` — add to `plugins[]` with `"source": "./plugins/<plugin-name>"`.
    - `.agents/plugins/marketplace.json` — add an entry with `"source": { "source": "local", "path": "./plugins/<plugin-name>" }`.
-
-4. Add skills to `plugins/<plugin-name>/skills/` per [Adding a new skill](#adding-a-new-skill).
-
-5. Re-run `scripts/install.ps1` / `install.sh` to junction/symlink the new skills.
-
-## Distributing as a plugin
-
-For personal use, the install script is enough. The plugin manifests exist so this repo can also be installed as a first-class plugin via marketplace mechanics — useful when sharing with others, or when you want per-plugin enable/disable toggles.
-
-Consumers install plugins individually. You don't have to take everything in the marketplace — just the plugins you want.
-
-### Which form should I use?
-
-| Scenario | Recommended form |
-|---|---|
-| Your own machine, personal use | `scripts/install.ps1` / `install.sh` (junctions) — simplest, live edits reflect immediately |
-| Iterating on plugin manifests | Local-path marketplace install — exercises the manifest wiring |
-| Sharing with a collaborator (private repo) | GitHub URL or shorthand — works for both Claude Code and Codex |
-| Public distribution | GitHub URL or shorthand — works for both Claude Code and Codex |
-
-### Local path vs GitHub URL
-
-Both Claude Code's `/plugin marketplace add` and Codex's `codex plugin marketplace add` accept either a local directory path or a GitHub URL/shorthand:
-
-- **Local path** — the agent reads from the source tree. Edits are live; no cache layer.
-- **GitHub URL / shorthand** — the agent clones the repo (Claude Code caches under `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`). Updates require an explicit refresh. Enables sharing without giving collaborators filesystem paths.
-
-### Claude Code
-
-**Add the marketplace, then install whichever plugins you want:**
-
-```
-/plugin marketplace add C:\Users\<you>\Code\agent-skills
-/plugin install project-setup@scarson-skills
-/plugin install superpowers-plus@scarson-skills
-/plugin install utility@scarson-skills
-```
-
-Or from GitHub (public or private):
-
-```
-/plugin marketplace add https://github.com/scarson/agent-skills
-/plugin install superpowers-plus@scarson-skills
-```
-
-#### Credentials for private repos
-
-`/plugin marketplace add <url>` shells out to `git clone`, which uses your system git credentials:
-
-- **Windows** — Git Credential Manager stores your GitHub token in Windows Credential Manager. Any successful `git push` / `git fetch` caches it. Claude Code inherits it transparently.
-- **macOS** — Keychain via `git config --global credential.helper osxkeychain`, or Git Credential Manager.
-- **Linux / WSL** — `libsecret` helper, or Git Credential Manager installed manually.
-
-If `/plugin marketplace add <private-url>` hangs or fails against a private repo, the usual cause is an empty credential cache and no terminal to prompt. Warm the cache by running this in any shell, then retry:
-
-```bash
-git ls-remote https://github.com/scarson/agent-skills.git
-```
-
-After that succeeds, the Claude Code install succeeds too.
-
-**Collaborators on a private repo**: add them on GitHub. Their GCM/gh handles the token, and the URL form works identically to yours — no additional plugin-side configuration needed.
-
-### Codex
-
-Codex's `codex plugin marketplace add` accepts a GitHub shorthand (`owner/repo`), an HTTPS or SSH Git URL, or a local directory — so you can install straight from the public repo or from a local clone.
-
-**From GitHub:**
-
-```bash
-codex plugin marketplace add scarson/agent-skills
-# or: codex plugin marketplace add https://github.com/scarson/agent-skills.git
-codex
-# /plugins  →  Sam's Agent Skills  →  install project-setup, superpowers-plus, utility
-```
-
-**From a local clone** (live edits, no cache layer):
-
-```bash
-git clone https://github.com/scarson/agent-skills.git ~/Code/agent-skills
-codex plugin marketplace add ~/Code/agent-skills
-```
-
-Pin a branch or tag with `owner/repo@ref` or the `--ref` flag.
-
-**Private repos:** because Codex clones via plain `git`, the same credential-manager rules as Claude Code apply. If you can `git clone <private-url>` from a terminal, you can install the plugin.
+4. Add skills per [Adding a new skill](#adding-a-new-skill).
+5. If installed via Method 2, re-run the installer to junction the new skills.
 
 ## Repo layout
 
