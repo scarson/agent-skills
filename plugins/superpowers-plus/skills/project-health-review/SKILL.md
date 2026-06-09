@@ -43,7 +43,7 @@ Each subagent SHOULD be invoked using the **latest available Claude Opus model**
 
 Each agent MUST:
 1. Read the relevant source files (not just `CLAUDE.md` / `AGENTS.md` — actually read the code)
-2. Read the project's plan / architecture docs (e.g., `PLAN.md`, `docs/plans/`, `docs/architecture.md`) for intended design where relevant
+2. Read the project's plan / design / spec / architecture docs for intended design and requirements where relevant — e.g., `PLAN.md`, `docs/plans/`, `DESIGN.md`, `docs/design/` (or slugged `*-design.md`), `SPEC.md`, `docs/specs/` (or slugged `*-spec.md`), `docs/architecture.md`
 3. Apply the "rejection memo" frame: you're evaluating whether to adopt this project or deploy it in production, and you're looking for reasons to say no
 4. Report ONLY problems, ranked by severity
 
@@ -93,9 +93,11 @@ Do not include a summary, introduction, or conclusion. Just the findings.
 You are reviewing this project for architectural and design problems. Your
 job is to find issues — not to praise what's working.
 
-Read the project's plan / architecture docs first to understand the intended
-architecture (PLAN.md, docs/plans/, docs/architecture.md, or equivalent),
-then read the actual code to see what was built. Focus on:
+Read the project's plan / design / spec / architecture docs first to understand
+the intended architecture and requirements (PLAN.md, docs/plans/, DESIGN.md,
+docs/design/ or *-design.md, SPEC.md, docs/specs/ or *-spec.md,
+docs/architecture.md, or equivalent), then read the actual code to see what
+was built. Focus on:
 
 - Coupling: are packages that should be independent actually entangled?
   Follow import graphs. Do high-level packages import low-level packages
