@@ -23,8 +23,9 @@ Companion references (read as needed, one level deep):
 - [`currency-protocol.md`](currency-protocol.md) — version-aware currency-brief research + cache.
 - [`lane-prompts.md`](lane-prompts.md) — the verbatim dispatch prompts for every lane.
 - [`profile-packs/`](profile-packs/) — per-ecosystem lane lenses (`generic-pack.md` is the always-loaded fallback).
-- [`run-schema.md`](run-schema.md) — versioned run metadata + ledger + finding fingerprints for historical/regression analysis.
+- [`run-schema.md`](run-schema.md) — versioned run metadata + ledger + finding fingerprints (and the run-result recovery substrate) for historical/regression analysis.
 - [`version-indexes/`](version-indexes/) — shipped, build-once "API/feature → version → perf benefit" lookups; the `idiom-currency` lane consults these before any live research.
+- [`running-at-scale.md`](../performance-audit-cycle/running-at-scale.md) — RECOMMENDED when mechanizing many runs: the StructuredOutput schemas (lane-finding / merged-finding / verdict), the per-slice pipeline, grouped verification, and the abort/recovery/durability rules for large multi-slice runs. (Optional for a single bounded snapshot.)
 
 ---
 
@@ -142,13 +143,15 @@ Each subagent SHOULD be invoked using the **latest available Claude Opus model**
 
 **Record the request honestly, not a guessed identity.** Some harnesses let you set the subagent *model* but expose **no reasoning-effort knob** (the Claude Code Agent tool, for one). When you can't actually request x-high, record `reasoning_effort: "default (harness exposes no knob)"` in the run metadata rather than claiming x-high — the metadata captures what was *requested*, and an honest "default" is correct where the dial doesn't exist.
 
-The runner MUST wait for all dispatched lanes to complete before Phase 3.
+The runner MUST wait for all dispatched lanes to complete before Phase 3. **A lane that completes by *failing* — errors, times out, or returns nothing — blocks the report exactly as an incomplete run does** (see the abort rule in Phase 3).
 
 ---
 
 ## Phase 3 — Synthesis
 
-After all lanes complete, compile one consolidated report:
+**Abort on any failed lane — do not write an undercount report.** If any dispatched lane errored, timed out, or returned nothing, the runner MUST NOT synthesize or write a consolidated report from the survivors — abort and resume from the failure instead. A partial-lane report looks normal and reads as "audited, few findings," which makes it **indistinguishable from a genuinely clean slice** — the most dangerous output this skill can produce, because it tells the operator to stop looking. Keep the raw reports from lanes that *did* succeed (they are reused on resume, not wasted), but never assemble them into a final report on their own. See [`running-at-scale.md`](../performance-audit-cycle/running-at-scale.md).
+
+After all lanes *successfully* complete, compile one consolidated report:
 
 1. **Deduplicate** across lanes — cross-lane agreement is a **confidence signal, not redundancy**: note which lanes flagged each and **lead the report with the most-agreed findings**. High overlap on a small hot core (the same hot symbol seen through several lane framings — algorithmic "defeats the cache", memory "per-call alloc", idiom-currency "library fast-path") is *expected*, not noise; collapse it to one finding with one fingerprint and record the agreement count. **But calibrate the claim honestly:** the lanes share the runner's scope, framing, and file selection, so agreement is **attenuated corroboration** (several lenses on the same code the runner pointed them at), not N fully-independent witnesses — it raises confidence, it does not make a static argument measured. State agreement as "M lanes flagged this", not as proof.
 2. **Rank** by the finding model (`finding-model.md`): Impact × Confidence, Effort sequencing within bands.

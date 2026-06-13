@@ -321,6 +321,15 @@ without radio hardware].*
   - **Run ledger** (`runs.jsonl`) — one line per executed run, for regression.
 - **Commit per slice** (consolidated report + ledger update). Never batch a repo's
   worth of audit into one commit.
+- **Recovery & durability at scale:** a multi-hour whole-repo run *will* cross a
+  spend limit, a transient rate-limit, and possibly a session boundary. The
+  committed per-slice reports + the progress/run ledgers above are the **durable
+  record of truth**; the orchestration journal cache is **same-session only** (a
+  cross-session "resume" re-runs work and can overwrite a good report with an
+  undercount). For the resume / hybrid-model-fallback / reconstruct-from-raw-reports
+  patterns, the rule that a slice with any failed lane MUST abort rather than emit an
+  undercount, and the run-result-as-recovery-substrate rule, follow
+  [`running-at-scale.md`](running-at-scale.md).
 - **Coverage drift:** before each slice, confirm its paths still exist; at the end,
   re-diff the coverage ledger against the **current** tree (vs the planning SHA) —
   renamed/added files must be re-homed, not dropped.

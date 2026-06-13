@@ -6,11 +6,14 @@
 `run_schema_version` is the version of THIS schema. Bump it when the structure changes; parsers gate
 on it. (Current: **1**.)
 
-## Three artifacts per run
+## Four artifacts per run
 
 1. **Frontmatter** on the consolidated markdown report (human- and machine-readable).
 2. **One appended line** in `docs/perf-audits/runs.jsonl` (the longitudinal ledger).
 3. **A fingerprint on every finding** in the report body, so runs can be diffed.
+4. **The run-result object** — the orchestration's machine-readable return value, carrying the
+   **full** merged-finding + verdict set. It is the recovery substrate when the journal cache is gone
+   (see §4 and [`running-at-scale.md`](../performance-audit-cycle/running-at-scale.md)).
 
 ## 1. Consolidated-report frontmatter
 
@@ -76,6 +79,25 @@ idiom-currency, cost-map, payload-startup, dynamic) — never a bare number.
 - `short-title-slug` = lowercased, hyphenated 2–4 word gist (e.g. `n-plus-1`, `on2-dedup`,
   `unmemoized-render-sort`).
 - Show it inline, e.g. `**Fingerprint:** data-access:inventory.py:enrich_line_items:n-plus-1`.
+
+## 4. Run-result object (recovery substrate)
+
+When the cycle is orchestrated at scale (see [`running-at-scale.md`](../performance-audit-cycle/running-at-scale.md)),
+the orchestration returns a machine-readable **run-result object**. Persist-before-synthesis protects
+the raw lane reports; it does **not** protect the *synthesis* (the merged findings + verdicts). If a
+slice's synthesis is lost — a spend limit mid-merge, then a journal-cache loss across a session
+boundary — the run-result is the only structured record of the merged set.
+
+- The run-result **MUST carry the FULL set** of merged-findings and their verdicts — **never a
+  top-N summary.** A `slice(0, N)` cap is lossy exactly when recovery needs it: a 17-finding slice
+  recovered from a top-12 return silently drops 5, and "top by display rank" ≠ "safe to lose" (the
+  dropped one can be the critical). Rank for *display* downstream; never truncate the durable record.
+- **Durability hierarchy** (which artifacts survive what): the committed per-slice reports + the
+  `runs.jsonl` ledger are the record of truth and survive a session boundary; the captured run-result
+  survives if written down; **the orchestration journal cache is SAME-SESSION only** — a cross-session
+  "resume" is not journal-backed and re-runs the work. `running-at-scale.md` covers the recovery
+  patterns; this schema's contract is just: *the run-result is complete, or it is not a recovery
+  substrate.*
 
 ## Regression diff (how the runner computes it)
 
