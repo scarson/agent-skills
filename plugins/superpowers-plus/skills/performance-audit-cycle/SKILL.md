@@ -24,7 +24,7 @@ If `$ARGUMENTS` is empty or unclear, the runner MUST ask the user for a scope be
 
 **When the cycle is overkill — recommend the snapshot.** The cycle's added value (per-slice planning, plan-review, cross-slice synthesis) pays off when a single pass *structurally cannot hold the codebase* — a large or recurring surface. For a **small, single-context-holdable scope** (roughly **< ~10k production LOC** a strong model can read in one window, one or two ecosystems), the full cycle's machinery is largely ceremony — field evidence shows a competent single pass recovers most critical/major findings there, so the planning/review tail is poorly justified. In that case the runner SHOULD **say so and recommend the snapshot [`performance-audit`](../performance-audit/SKILL.md)** (the lanes + synthesis, no plan/review cycle) instead, or run it directly if the user just wants findings. Reserve the full cycle for surfaces that genuinely exceed one context window or that will be re-audited on a schedule. (This extends `whole-repo-scoping.md`'s lightweight-vs-full router up to the cycle entrypoint.)
 
-**Whole-repo / oversized scope.** If the user DOES want "everything" — a whole repository, a top-level directory/package set, "all of `<X>`", or any surface materially larger than one run is optimized for (roughly >4k production LOC, or spanning more than one language/package) — do NOT cram it into one run and do NOT silently audit only part of it. Instead follow [`whole-repo-scoping.md`](whole-repo-scoping.md), **starting at its size-router (its first routing step)**, which sub-routes between a lightweight pass (small / ≤2 slices: survey, eyeball, run, 3-line ledger, no formal review round) and the full survey-through-execute + review-gate method (a repo / multi-package / larger surface / >2 languages). The method does the rest: survey + measure production LOC, build a cheap hot-path/reachability map, cut the code into bounded language-homogeneous slices by perf-relevance, calibrate cross-slice call frequency, assign depth tiers (full / reduced / cold sweep(s) / overlay), **adversarially review the partition before executing**, then run this cycle once per slice with a persistent progress ledger. That method turns "audit the whole repo" into a reviewed plan of bounded runs that collectively cover all the code.
+**Whole-repo / oversized scope.** If the user DOES want "everything" — a whole repository, a top-level directory/package set, "all of `<X>`", or any surface materially larger than one run is optimized for (roughly >4k production LOC, or spanning more than one language/package) — do NOT cram it into one run and do NOT silently audit only part of it. Instead follow [`whole-repo-scoping.md`](whole-repo-scoping.md), **starting at its size-router (its first routing step)**, which sub-routes between a lightweight pass (small / ≤2 slices: survey, eyeball, run, 3-line ledger, no formal review round) and the full survey-through-execute + review-gate method (a repo / multi-package / larger surface / >2 languages). The method does the rest: survey + measure production LOC, build a cheap hot-path/reachability map, cut the code into bounded language-homogeneous slices by perf-relevance, calibrate cross-slice call frequency, assign depth tiers (full / reduced / cold sweep(s) / overlay), **adversarially review the partition before executing**, then run this cycle once per slice with a persistent progress ledger. That method turns "audit the whole repo" into a reviewed plan of bounded runs that collectively cover all the code. For the mechanics of executing those bounded runs at scale — the per-slice orchestration pipeline, the StructuredOutput schemas (finding / merged-finding / verdict), grouped verification, the abort-on-failed-lane rule, and recovery/durability across spend-limit / rate-limit / session-boundary interruptions — follow [`running-at-scale.md`](running-at-scale.md).
 
 ---
 
@@ -44,7 +44,7 @@ Produce a **scope summary** — files/packages, a one-paragraph description of w
 
 The runner MUST invoke the sibling [`performance-audit`](../performance-audit/SKILL.md) skill (or, if the framework cannot invoke skills by name, read its `SKILL.md` from the plugin install location), passing the scope summary + adjacent context. Follow it through Phase 0 (detection), Phase 1 (currency brief), Phase 2 (lane dispatch), and Phase 3 (synthesis). This produces raw per-lane reports + a consolidated report (and, if suspected bugs were found, a bug-hunt kickoff prompt) under `docs/perf-audits/`.
 
-**The runner MUST NOT proceed until all dispatched lanes complete and the consolidated report is written.**
+**The runner MUST NOT proceed until all dispatched lanes complete *successfully* and the consolidated report is written.** If any lane failed (errored, timed out, returned nothing), the dispatched skill aborts rather than emitting a report over the survivors — a missing-lane report reads as "audited, few findings" and is indistinguishable from a genuinely clean slice (see `performance-audit` Phase 3's abort rule and [`running-at-scale.md`](running-at-scale.md)). The cycle MUST treat such a slice as **not yet audited**, not as clean: resume it before continuing.
 
 ---
 
@@ -53,6 +53,8 @@ The runner MUST invoke the sibling [`performance-audit`](../performance-audit/SK
 Audit lanes are adversarial and produce false positives, mischaracterize impact, and sometimes flag intentional tradeoffs. Every finding needs verification.
 
 **COMPLETENESS REQUIREMENT:** The runner MUST account for every single finding from every lane report (not just the synthesis — lanes may carry findings the synthesis merged or missed). Before validating, enumerate all findings. Every finding MUST appear in the validated report as one of: confirmed / design decision / false positive / out-of-scope. **The runner MUST NOT decide what's "too minor" to include — that's the user's decision in Phase 5.** Silently dropping findings defeats the audit.
+
+**At scale, group the verification.** When validating many findings (a large slice, a whole-repo run), dispatching one verifier agent per finding does not scale — at 130 findings that is 130 agents. Instead dispatch verifiers over **co-located findings**: up to ~3 *same-file* findings per verifier, each assessed independently and returned with its own verdict. The verifier shares only the file read, not the judgment — ~3× fewer agents at the same rigor. Do NOT group findings across unrelated files into one verifier (that dilutes attention and re-opens the false-negative risk). The `verdict` schema in [`running-at-scale.md`](running-at-scale.md) makes the one-verdict-per-finding completeness check mechanical (verdict count = finding count).
 
 For each finding:
 1. **Read the actual code** at the cited location. Verify the evidence yourself.
@@ -115,6 +117,7 @@ After user input, the runner MUST invoke [`writing-plans-enhanced`](../writing-p
   - a **post-change demonstration** that it improved — a measurement OR argument; **if it does not improve, revert the change**;
   - a **correctness guard** — existing tests pass + a test pinning the behavior the optimization must preserve (per TDD; consult `testing-anti-patterns` so the guard tests real behavior, not mocks).
 - **No severity-based deferral (disposition discipline, per `finding-model.md`):** every finding's default disposition is **FIX**. The plan MUST schedule **all** findings by default. A finding may be dropped only when the **user explicitly opted it out** (Phase 5) or the agent gives a **substantive reason naming a specific concrete mechanism** (the exact refactor it collides with; the exact out-of-scope dependency bump; the specific correctness regression + why it outweighs the gain). "Minor / low-priority / might be risky / could be complex" is **forbidden** as a deferral rationale. Deferred items go in the Deferred appendix (below) with their named mechanism or the user's opt-out.
+- **Coverage reconciliation gate (REQUIRED — a gating artifact, not a prose aspiration):** "schedule all confirmed" is only real if it is *checked*. The plan MUST carry a **finding-ID → task reconciliation**, computed **per slice** (IDs renumber `P1..Pn` per slice — reconcile per slice, never against a flattened global list where collisions hide leaks): every Confirmed finding ID maps to at least one task, OR to a Deferred-appendix entry with its named mechanism / user opt-out. A Confirmed ID that is neither scheduled nor deferred is a **coverage leak** and MUST block the Phase 8 commit. Hand-enumeration leaks coverage silently — in the field, confirmed findings were left unscheduled across four separate slices and were caught only by a cross-model review plus a manual per-slice tally. Where the schema-driven path was used, the `merged-finding[]` + `verdict[]` arrays (see [`running-at-scale.md`](running-at-scale.md)) are the authoritative Confirmed set to reconcile against. See the reconciliation-table format below.
 - **Counter over-optimization:** specify the minimum change per task; state what NOT to touch. Performance tasks tempt wholesale rewrites.
 - **Advisory:** after remediation, run the auto-generated bug-hunt kickoff over the diff — performance changes are a classic bug source.
 
@@ -133,6 +136,21 @@ If any findings are deferred, the plan MUST include:
 ```
 
 This appendix is the persistent record — written to the plan file, never left in conversation memory.
+
+### Coverage reconciliation (gating artifact)
+
+Before Phase 8, the plan MUST carry an explicit reconciliation so "schedule all confirmed" is *checkable*, not aspirational — per slice, every Confirmed finding accounted for:
+
+```markdown
+| Slice | Confirmed ID | Disposition | Task / Deferred-reason |
+|-------|--------------|-------------|------------------------|
+| `ingest` | P3 | scheduled | Task 4 — batch the per-row catalog lookups |
+| `ingest` | P4 | deferred  | user opt-out (Phase 5) |
+| `api`    | P7 | scheduled | Task 11 — bound the unindexed hot-path scan |
+```
+(Slice names and IDs above are illustrative — use your run's actual slice names and per-slice `Pn` IDs.)
+
+Every Confirmed ID from every slice's validated report MUST appear exactly once, mapped to a task or a Deferred-appendix entry. A Confirmed ID that is neither is a coverage leak and blocks the commit. For a single-slice run this is one small table; for a whole-repo run it is the per-slice tally that catches the leaks hand-enumeration introduces.
 
 ---
 

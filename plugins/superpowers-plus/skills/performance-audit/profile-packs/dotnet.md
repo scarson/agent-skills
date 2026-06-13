@@ -128,6 +128,13 @@ Covers two distinct variants with different performance models: **Modern .NET** 
 - `Regex.GeneratedRegex` source generator compiles patterns at build time; prefer it over
   `new Regex(…)` or static `Regex` fields with `RegexOptions.Compiled` on hot paths (verify
   against the currency brief for your version).
+- **Under Native AOT, several "make it faster" idioms are no-ops or counter-productive** — most
+  notably `RegexOptions.Compiled` (AOT cannot emit the runtime-JITted compiled engine, so the flag
+  does nothing — `GeneratedRegex` is the AOT-correct answer), plus reflection-based fast-paths that
+  trimming defeats. Report these as a **build-configuration theme flagged once**, not per call site:
+  in a whole-repo run over a single AOT project the same AOT-no-op recurs in every slice, so the
+  `idiom-currency` lane should surface it once (as a cross-cutting / cross-slice theme) and batch the
+  occurrences rather than re-file an identical finding per slice.
 - `SearchValues<T>` pre-computes search state for repeated `IndexOfAny`/`ContainsAny` operations
   across `string` or `Span<char>`; look for inline char-set arguments in search calls that could
   be promoted to a cached `SearchValues<char>` or `SearchValues<string>` (verify against the
