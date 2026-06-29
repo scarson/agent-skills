@@ -17,7 +17,7 @@ A plugin is a cohesive bundle of skills that install together — one standalone
 | Plugin | Skills |
 |---|---|
 | `project-setup` | `claude-agents-md-init`, `git-strategy-init`, `pitfalls-docs-init`, `project-init` |
-| `superpowers-plus` | `build-robust-features`, `bug-hunt-cycle`, `bug-hunter-differential`, `bug-hunter-exploratory`, `bug-hunter-holistic`, `bug-hunter-multipass`, `handoff`, `health-review-cycle`, `performance-audit`, `performance-audit-cycle`, `plan-review-cycle`, `project-health-review`, `writing-plans-enhanced` |
+| `superpowers-plus` | `build-robust-features`, `bug-hunt-cycle`, `bug-hunter-differential`, `bug-hunter-exploratory`, `bug-hunter-holistic`, `bug-hunter-multipass`, `handoff`, `health-review-cycle`, `performance-audit`, `performance-audit-cycle`, `plan-review-cycle`, `project-health-review`, `wire-walk`, `writing-plans-enhanced` |
 | `utility` | `url-to-markdown` |
 
 ## Install
@@ -156,7 +156,7 @@ agent-skills/
 │   │       ├── git-strategy-init/
 │   │       ├── pitfalls-docs-init/
 │   │       └── project-init/             # one-command wrapper around the three above
-│   ├── superpowers-plus/                 # workflow orchestration (13 skills)
+│   ├── superpowers-plus/                 # workflow orchestration (14 skills)
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── .codex-plugin/plugin.json
 │   │   ├── README.md                     # plugin-level overview
@@ -173,6 +173,7 @@ agent-skills/
 │   │       ├── performance-audit-cycle/  # full performance-audit workflow (wraps performance-audit)
 │   │       ├── plan-review-cycle/        # adversarial multi-round plan review
 │   │       ├── project-health-review/    # five-axis adversarial dispatch
+│   │       ├── wire-walk/                 # reachability gate — operator flows traced to file:line
 │   │       └── writing-plans-enhanced/   # subagent-proofed plans + Living Document Contract
 │   └── utility/
 │       ├── .claude-plugin/plugin.json

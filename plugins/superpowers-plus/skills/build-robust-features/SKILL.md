@@ -90,3 +90,11 @@ Future maintainers: subagent-proofing rules belong in `writing-plans-enhanced`, 
 - **Calling `superpowers:writing-plans` directly** — bypasses subagent-proofing, the Living Document Contract, and the plan-review cycle. Use the sibling `writing-plans-enhanced` skill.
 - **Re-implementing plan review here** — `writing-plans-enhanced` already runs `plan-review-cycle` at its Step 4. Adding another inline review cycle here is duplication that drifts out of sync.
 - **Treating the adversarial review as design *iteration* rather than design *audit*** — the review surfaces issues; you decide which to fold back into the design before invoking `writing-plans-enhanced`. Don't merge them into a single endless loop.
+
+## Final gate — wire-walk (reachability)
+
+**Before declaring the feature end-to-end shipped / done / complete, the runner MUST run the sibling [`wire-walk`](../wire-walk/SKILL.md) skill.** It is a hard gate, not advice. A feature that compiles, passes tests, and is CI-green is still not shipped if a real consumer can't reach it — the recurring defect is a correct, tested backend wired to nothing a user can touch (the seam between components is nobody's component, so nobody wires it).
+
+`wire-walk` has the operator define the key user flows **greenfield** — the runner MUST NOT draft them, because anchoring launders the runner's own blind spots — then traces each flow verbatim to code (`file:line`), from its real starting state (fresh install / first launch / empty store / post-upgrade), hunting the universal break-patterns. **Any broken operator flow means the feature is NOT shipped** — that broken wiring is the real remaining work, not a follow-up. The runner MUST NOT claim done while one stands.
+
+Like the downstream planning discipline, this gate is **delegated, not re-implemented here**: the brainstorm + adversarial design review above get the design right, `writing-plans-enhanced` gets the plan right, and the sibling `wire-walk` skill owns proving a human can actually reach the shipped code. See [`wire-walk`](../wire-walk/SKILL.md) for the full procedure.
