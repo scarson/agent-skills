@@ -2,7 +2,7 @@
 name: claude-agents-md-init
 description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "initialize CLAUDE.md", "bootstrap agent guidance", "add CLAUDE.md and AGENTS.md", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, code comments, version control, testing, debugging, learning/memory), and placeholder sections for project-specific content. Default writes both files; use `--target claude|agents|both` to narrow scope. Each file carries a Sibling-sync reminder pointing to the other. Runs an alignment check on any existing root file and STOPs for human review before standing up a sibling against a divergent one. Cross-platform — git and standard file ops only. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
 metadata:
-  version: "2.2"
+  version: "2.3"
 ---
 
 # claude-agents-md-init
@@ -33,7 +33,7 @@ Invoke when the user asks to:
 - "initialize CLAUDE.md" / "initialize AGENTS.md"
 - "bootstrap Claude/Codex guidance" for a project
 - "add a CLAUDE.md template" (equivalent for AGENTS.md)
-- install project-root agent instructions following the 4.7-tuned convention
+- install project-root agent instructions following the modern-Claude-tuned convention (Opus 4.7+, reviewed against Opus 4.8 / Sonnet 5 / Fable 5)
 
 Do NOT use for:
 
@@ -72,13 +72,15 @@ Do NOT use for:
    - `## Terminology` heading near the top (within first ~50 lines)
    - `RFC 2119` string
    - `## Principles` heading
-   - `Rule #1: If you want exception to ANY rule` phrase
+   - `Rule #1:` phrase (prefix match — survives rewording of the rule body)
    - `## Our relationship` heading
-   - `Don't glaze me` phrase
+   - `## Proactiveness` heading
 
    Classification:
    - **≥ 4 markers present** → `TEMPLATE_ALIGNED` (structure matches template; the content of each section may differ, and that's OK)
    - **< 4 markers present** → `DIVERGENT` (file doesn't follow this template's shape at all; standing up a sibling from the template will create an out-of-sync pair)
+
+   Marker history: `Don't glaze me` was a marker through skill v2.2 but the phrase left the template; v2.3 replaced it with `## Proactiveness` and shortened the Rule #1 marker to a prefix. Files installed from any v2.1+ template match at least 4 of the current 6 markers (v2.1/v2.2 files carry `# Proactiveness` as an H1, which misses the H2 marker but still leaves 5 hits), so they remain `TEMPLATE_ALIGNED`.
 
 5. **Sibling-sync block presence check.** For every `TEMPLATE_ALIGNED` file, additionally check whether the sibling-sync block is present. Grep for the literal string `**Sibling sync.**`. If present → `TEMPLATE_ALIGNED_WITH_SYNC`; if absent → `TEMPLATE_ALIGNED_NO_SYNC`. Files authored before this skill (or under earlier versions) will be in the `NO_SYNC` state even if their content is template-aligned.
 
@@ -346,7 +348,7 @@ Pure instruction, no bundled scripts. Any agent framework with shell access and 
 See [README.md](README.md) § "Design decisions" for the rationale behind:
 
 - Why one skill generates two files rather than two parallel skills.
-- Why the template is Opus-4.7-tuned (RFC 2119, scoped STOP rules, bias-to-action, TodoWrite-with-scope).
+- Why the template is tuned for modern Claude models (RFC 2119, scoped STOP rules, autonomous-mode valve, bias-to-action, scoped task-tracking).
 - What's in the "universal" ruleset vs. what's placeholder.
 - The Sibling-sync reminder as a drift-detection mechanism.
 - The superpowers skills table pre-population choice.

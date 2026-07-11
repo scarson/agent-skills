@@ -1,6 +1,6 @@
 # claude-agents-md-init
 
-Initializes project-root agent-guidance files (`CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / Cline / other AGENTS.md-aware frameworks) from a single bundled template, tuned for modern Claude (Opus 4.7+) and forward-compatible with other coding agents.
+Initializes project-root agent-guidance files (`CLAUDE.md` for Claude Code, `AGENTS.md` for Codex / Cursor / Cline / other AGENTS.md-aware frameworks) from a single bundled template, tuned for modern Claude (Opus 4.7+; reviewed against Opus 4.8, Sonnet 5, and Fable 5) and forward-compatible with other coding agents.
 
 ## What this does
 
@@ -32,7 +32,7 @@ The reminder is load-bearing for drift prevention. When a user or agent edits `C
 
 ### Divergence detection before filling the gap
 
-When the skill is asked to fill a gap — one file exists, the other doesn't — it runs an **alignment check** on the existing file before standing up the sibling from the template. The check greps for six structural markers (the Terminology block with RFC 2119 reference, the Principles section with Rule #1, the Our-relationship section with the "Don't glaze me" phrase). If fewer than four markers are present, the existing file is classified as `DIVERGENT`.
+When the skill is asked to fill a gap — one file exists, the other doesn't — it runs an **alignment check** on the existing file before standing up the sibling from the template. The check greps for six structural markers (the Terminology heading and RFC 2119 reference, the Principles heading and its `Rule #1:` lead, the Our-relationship and Proactiveness headings). If fewer than four markers are present, the existing file is classified as `DIVERGENT`.
 
 Creating a template-based sibling against a `DIVERGENT` existing file would produce an out-of-sync pair at minute zero. The first cross-sync operation later would face a large structural diff — exactly the mess the sibling-sync reminder is designed to prevent.
 
@@ -117,21 +117,27 @@ Each sub-skill has zero hard dependencies on the others — references that don'
 
 ## Design decisions
 
-### Opus 4.7+ tuning
+### Model tuning (Opus 4.7+; v2.3 reviewed against Opus 4.8 / Sonnet 5 / Fable 5)
 
 The template encodes lessons from a tuning pass performed on a real Claude 4.7 CLAUDE.md. The relevant behavior changes from Anthropic's 4.7 migration guide that shaped the template:
 
 | 4.7 behavior change | Template response |
 |---|---|
-| More literal instruction following, especially at lower effort levels | RFC 2119 terminology block governs all MUST / MUST NOT tokens; scoped STOP rules (avoid unqualified "ALWAYS STOP"); TDD scope explicitly enumerated; TodoWrite guidance scoped to 3+ step work |
+| More literal instruction following, especially at lower effort levels | RFC 2119 terminology block governs all MUST / MUST NOT tokens; scoped STOP rules (avoid unqualified "ALWAYS STOP"); TDD scope explicitly enumerated; task-tracking guidance scoped to 3+ step work |
 | Fewer subagents by default | Explicit "When to dispatch parallel subagents" callout with project-specific triggers listed |
 | Response length varies by use case | No explicit verbosity rules — let the model calibrate |
-| More direct tone, less validation-forward phrasing | "Don't glaze me" anti-sycophancy rule kept; specific-phrase bans (e.g., the old "You're absolutely right!" ban) dropped as obsolete |
+| More direct tone, less validation-forward phrasing | Persona-based anti-sycophancy framing removed in v2.3 (current models are direct by default); the concrete push-back rules in §Our relationship carry the intent, with an explicit "agree plainly when agreement is warranted" clause; the old specific-phrase bans (e.g. "You're absolutely right!") remain dropped as obsolete |
 | Built-in progress updates | No scaffolding for forced interim status messages |
 | Better file-system memory | Three-layer memory pattern (pitfalls / user-scoped memory / per-phase reports) prescribed explicitly |
 | Stricter effort calibration | Rules that trigger the TDD / debugging / thinking-doc workflows call out their skill operationalization explicitly |
 
-Codex and Cursor are similarly literal about instruction-following (both respect RFC 2119 conventions, both have improved at long-horizon agentic work). The 4.7-tuned template produces content that lands correctly in AGENTS.md for those frameworks too — which is the main reason a single template serves both outputs.
+**v2.3 review pass (2026-07)** checked the template against Anthropic's Opus 4.8, Sonnet 5, and Fable 5 migration guidance. The structural bets held up (RFC 2119 keywords as the emphasis mechanism, bias-to-action, no forced-progress scaffolding — both new models narrate well unprompted), and three families of adjustment landed:
+
+- **Opus 4.8 is more deliberate and asks more often by default.** Unqualified STOP-and-ask rules compound that. Rule #1 is now scoped to MUST/MUST NOT rules and carries an autonomous-mode valve (conservative interpretation + recorded judgment call + DONE_WITH_CONCERNS instead of deadlocking when no human is available); the session-start uncommitted-changes STOP is scoped to task-overlapping changes; the systematic-debugging framework is scoped to non-obvious issues; todo bookkeeping no longer requires approval.
+- **Both models follow instructions more literally.** Emotional-emphasis language ("…IS FAILURE", all-caps phrases that aren't RFC 2119 keywords) was de-escalated — plainly stated rules bind identically and don't distort prioritization. The persona-based anti-sycophancy line was removed; the concrete push-back rules remain, guarded against overcorrection on already-direct models.
+- **Tool-specific callouts drift.** TodoWrite and "the journal tool" were replaced with harness-agnostic phrasing (todo/task-tracking tool; project memory/journal mechanism with a TODO naming it) — harnesses vary across versions, and AGENTS.md consumers never had those tools. The stale "Opus 4.7 spawns fewer subagents" note became condition-based delegation-trigger guidance (current models under-reach for subagents unless told *when* to delegate).
+
+Codex and Cursor are similarly literal about instruction-following (both respect RFC 2119 conventions, both have improved at long-horizon agentic work). The tuned template produces content that lands correctly in AGENTS.md for those frameworks too — which is the main reason a single template serves both outputs.
 
 ### What's "universal" vs. what's placeholder
 
@@ -214,10 +220,12 @@ That order matters because the document is read linearly by humans and agents al
 - **v2.0** (agent-skills PR #7) — dual-target (CLAUDE.md + AGENTS.md). Sibling-sync reminder added to template. Released briefly under the name `agent-md-init`, but the name looked like a typo-pluralization of the `AGENTS.md` spec.
 - **v2.1** (this skill) — renamed to `claude-agents-md-init` to disambiguate visually from `AGENTS.md`. Added divergence detection on existing files; skill now STOPs for human review before standing up a sibling from the template against a `DIVERGENT` existing file. Added sync-block injection for `TEMPLATE_ALIGNED_NO_SYNC` existing files (projects that pre-date the sync-block feature). Template file renamed `agent-md-template.md` → `claude-agents-md-template.md`.
 - **v2.2** — universal-ruleset additions to the template, mined from the gstack `cso` skill's load-bearing operational discipline. Added two foundational-rules bullets (**Trust, then verify** + **Quality matters. Bugs matter.**), a new **Completeness over shortcuts** section (boil lakes, flag oceans), a new **Completion status & escalation** section (DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT four-state reporting + 3-attempt escalation rule), and a **Reflection trigger** appended to Learning and Memory Management. Alignment-check markers unchanged — projects on v2.1-aligned CLAUDE.md/AGENTS.md remain TEMPLATE_ALIGNED. Existing projects do NOT auto-update; re-run the skill or hand-port the new sections.
+- **v2.3** — periodic model-fit review against Opus 4.8, Sonnet 5, and Fable 5 (grounded in Anthropic's model-migration guidance). Rule #1 scoped to MUST/MUST NOT rules with an **autonomous-mode valve** (conservative interpretation + recorded judgment call + DONE_WITH_CONCERNS instead of deadlock); session-start uncommitted-changes STOP scoped to task-overlapping changes; systematic-debugging framework scoped to non-obvious issues; emotional-emphasis language de-escalated (RFC 2119 keywords carry the force); persona-based anti-sycophancy line removed (concrete push-back rules kept, with an anti-overcorrection clause); tool-specific callouts generalized (TodoWrite → harness todo/task tool; journal MCP → project memory/journal mechanism with a naming TODO); ABOUTME headers gained an existing-codebase precedence note; `# Proactiveness` heading level fixed to H2; stale Opus 4.7 subagent note replaced with condition-based delegation triggers. Alignment markers updated in SKILL.md: `Don't glaze me` (absent from the template since v2.2) → `## Proactiveness`; Rule #1 marker shortened to the `Rule #1:` prefix. Files from v2.1/v2.2 templates still classify TEMPLATE_ALIGNED (≥4 of 6 markers). Existing projects do NOT auto-update; re-run the skill or hand-port.
 
 ## References
 
 - Anthropic Opus 4.7 migration guide — informed the 4.7-tuned language in the template
+- Anthropic Opus 4.8 / Sonnet 5 / Fable 5 migration guidance (behavioral-shift sections) — informed the v2.3 review pass
 - AGENTS.md convention — emerging standard for non-Claude agent guidance (Codex, Cursor, Cline, Aider, and others)
 - `git-strategy-init` SKILL.md — sibling skill; established the workflow pattern this skill follows
 - `pitfalls-docs-init` SKILL.md — sibling skill; established the template-bundling pattern and cross-reference discipline
