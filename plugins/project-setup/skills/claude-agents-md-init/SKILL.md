@@ -2,7 +2,7 @@
 name: claude-agents-md-init
 description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "initialize CLAUDE.md", "bootstrap agent guidance", "add CLAUDE.md and AGENTS.md", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, code comments, version control, testing, debugging, learning/memory), and placeholder sections for project-specific content. Default writes both files; use `--target claude|agents|both` to narrow scope. Each file carries a Sibling-sync reminder pointing to the other. Runs an alignment check on any existing root file and STOPs for human review before standing up a sibling against a divergent one. Cross-platform — git and standard file ops only. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
 metadata:
-  version: "2.3"
+  version: "2.4"
 ---
 
 # claude-agents-md-init
@@ -12,7 +12,7 @@ Initializes project-root agent-guidance files from a single bundled template, re
 - `CLAUDE.md` — consumed by Claude Code (`claude.ai/code`)
 - `AGENTS.md` — consumed by Codex, Cursor, Cline, Aider, and other AGENTS.md-aware agent frameworks
 
-The template carries the **universal** ruleset that applies across projects and frameworks (RFC 2119 terminology, principles, relationship, proactiveness, completeness over shortcuts, TDD, writing code, naming, code comments, cross-references in persistent artifacts, version control short-form, testing, issue tracking, completion status & escalation, systematic debugging, thinking documentation, learning and memory, workflow skills table) plus **placeholder** blocks for project-specific content. At write time, two tokens substitute per target:
+The template carries the **universal** ruleset that applies across projects and frameworks (RFC 2119 terminology, principles, external-resource safety, relationship, proactiveness, completeness over shortcuts, TDD, writing code, naming, code comments, cross-references in persistent artifacts, version control short-form, testing, issue tracking, completion status & escalation, systematic debugging, thinking documentation, learning and memory, workflow skills table) plus **placeholder** blocks for project-specific content. At write time, two tokens substitute per target:
 
 - `[AGENT_INTRO]` — the "This file provides guidance to …" intro line; per-target phrasing
 - `[SIBLING_FILE]` — the name of the other file in the Sibling-sync reminder
@@ -43,6 +43,7 @@ Do NOT use for:
 ## Inputs
 
 - The bundled template at `references/claude-agents-md-template.md` (relative to this skill's root). Do NOT read the template from any other location.
+- The bundled **policy file** at `references/external-resource-safety.md`. The template's `## External-resource safety` section is an always-loaded tripwire that points at `docs/security/external-resource-safety.md`; this bundled file is the depth written to that path. It is framework-neutral (no substitution tokens) and shared by both `CLAUDE.md` and `AGENTS.md`, so it is written **once** per project, not per target.
 - The current working directory must be the root of the project (git repo preferred but not required).
 - Optional inputs to ask the user for (Step 2):
   - Project name (default: basename of the current directory)
@@ -84,7 +85,9 @@ Do NOT use for:
 
 5. **Sibling-sync block presence check.** For every `TEMPLATE_ALIGNED` file, additionally check whether the sibling-sync block is present. Grep for the literal string `**Sibling sync.**`. If present → `TEMPLATE_ALIGNED_WITH_SYNC`; if absent → `TEMPLATE_ALIGNED_NO_SYNC`. Files authored before this skill (or under earlier versions) will be in the `NO_SYNC` state even if their content is template-aligned.
 
-6. **Smart default for `--target`:**
+6. **Security-section presence check.** For every `TEMPLATE_ALIGNED` file, also check whether the `## External-resource safety` section (added in v2.4) is present. Grep for the literal heading `## External-resource safety`. If absent → the file predates the supply-chain safety section and is a candidate for the additive migration in Step 4 (`MISSING_SECURITY_SECTION`). This is independent of the sync-block state above: a file can be `TEMPLATE_ALIGNED_WITH_SYNC` yet still lack the security section. Also note whether `docs/security/external-resource-safety.md` (the policy file the section points at) exists — the migration in Step 5.7 creates it if missing.
+
+7. **Smart default for `--target`:**
    - Both missing → default `both` (recommend the full install)
    - `CLAUDE.md` present, `AGENTS.md` missing → default `agents` (fill the gap; see Step 4 for sync-block injection and divergence handling)
    - `AGENTS.md` present, `CLAUDE.md` missing → default `claude`
@@ -211,9 +214,13 @@ Otherwise, for each target file in the install set:
 
 - **If `TEMPLATE_ALIGNED_WITH_SYNC`**:
   - Leave as-is unless the user explicitly requests `--merge-template` to pull in new universal sections from the template since last install. Default: skip this target.
+  - **Exception — security section.** If this file is also `MISSING_SECURITY_SECTION` (Step 1 found no `## External-resource safety`), offer the additive security-section migration below even without `--merge-template`. It's a security baseline (like "No secrets in CLI flags"), so surface it proactively; other new universal sections still wait for `--merge-template`.
 
 - **If `TEMPLATE_ALIGNED_NO_SYNC`**:
   - The file is template-aligned but missing the sibling-sync block (e.g., authored under an earlier skill version or by hand). Inject the sibling-sync block at the top — specifically, insert it between the intro line and the `## Terminology` section. Report the injection. No other changes. This is a safe, minimal, additive edit.
+
+- **If `MISSING_SECURITY_SECTION` (any `TEMPLATE_ALIGNED*` file lacking `## External-resource safety`)**:
+  - Offer the **additive, non-destructive security-section migration** (mechanics in Step 5.7): propose inserting the verbatim `## External-resource safety` section plus its two pointers, previewed and confirmed — never silently applied. Our text lands verbatim; the user's own prose is never overwritten; only placement flexes. Because this is a security baseline, surface it proactively (see the `WITH_SYNC` exception above) rather than waiting for `--merge-template`. If the user declines, skip — do not nag on later runs beyond a single offer.
 
 - **If `DIVERGENT`**:
   - The file exists at root but doesn't follow the template's shape. Surface to user. Options:
@@ -256,7 +263,18 @@ For each target being written:
 
 5. **Write** to the output filename from Step 2. In non-dogfood mode with an existing file selected for replacement in Step 4, create a backup at `<FILENAME>.backup-<timestamp>` first. In dogfood mode, skip the backup — the override guarantees the existing file is untouched.
 
+5a. **Write the shared policy file (three-artifact atomicity).** Whenever you write (or migrate in) any `CLAUDE.md`/`AGENTS.md` that contains the `## External-resource safety` section, also write `docs/security/external-resource-safety.md` — verbatim from `references/external-resource-safety.md`, no substitution, creating the `docs/security/` directory if needed. This is the target of the section's pointer. Rules: (a) it is written **once** per project regardless of `--target` (both siblings share it); (b) never emit a CLAUDE.md/AGENTS.md carrying the section's pointer on a fresh write without also landing this file — the section + its policy file land together; (c) if `docs/security/external-resource-safety.md` already exists with **different** content (a user-customized policy), do NOT overwrite it — report the divergence and leave it (the pointer still resolves); (d) in dogfood mode, write it next to the dogfood outputs or skip if the canonical file already exists, consistent with the dogfood short-circuit. The section's own fail-safe ("if that file is missing, apply the gates anyway and flag it") means a later deletion degrades gracefully rather than breaking the gate.
+
 6. **Sync-block injection for existing `TEMPLATE_ALIGNED_NO_SYNC` files** (independent of whether we wrote anything else this run). If Step 4's alignment check found an existing CLAUDE.md or AGENTS.md that is template-aligned but missing the sibling-sync block, inject the block now. The block goes between the intro line (the first line after `# <TITLE>`) and the `## Terminology` section, matching the template's placement. Apply the per-target `[SIBLING_FILE]` substitution as you would when writing from template. Report this as a separate line in Step 7's summary ("injected sibling-sync block into existing CLAUDE.md").
+
+7. **Security-section injection for `MISSING_SECURITY_SECTION` files** (additive migration, v2.4). For any `TEMPLATE_ALIGNED*` file that lacks `## External-resource safety`, propose an additive, non-destructive merge — previewed and confirmed, never silently applied. Our text lands verbatim; the user's prose is never overwritten; only placement flexes.
+   - **Insert the section verbatim** from the template, with placement leeway: prefer immediately after `## Foundational rules` / before `## Our relationship`. If those exact anchors are missing or the file's structure has drifted, choose the nearest sensible section boundary in the same neighborhood rather than refusing — the text goes in verbatim; only *where* it lands adapts. Never split it mid-section or mid-sentence.
+   - **Append the two pointers; don't overwrite.** Add the "Trust, then verify" precedence note and the `## Proactiveness` exception as new adjacent bullets/sentences near their targets. If the existing "Trust, then verify" bullet is still byte-for-byte the pre-v2.4 template text, you MAY upgrade it in place to the current wording (that's replacing the template's own old text). If it has been customized at all, leave it untouched and append a short pointer bullet instead. Either way the reader ends up routed to `## External-resource safety`.
+   - **Both or neither, previewed, backed up.** When both `CLAUDE.md` and `AGENTS.md` exist, require normalized sibling equality first; show both proposed diffs; back up both (`<FILENAME>.backup-<timestamp>`); obtain Step-3-style confirmation; then apply to **both or neither**.
+   - **Idempotent.** Afterward the section appears exactly once per file and sibling equality holds; a re-run produces no diff.
+   - **Create the policy file too.** In the same confirmed step, also create `docs/security/external-resource-safety.md` (verbatim from `references/external-resource-safety.md`) if it does not already exist, so the injected pointer resolves — this is part of the both-or-neither set. If it exists with different content, leave it and report the divergence.
+   - **Last resort only.** Surface manual instructions + `--merge-template` only if the file is so divergent that no sensible placement exists.
+   Report each injection as a separate line in Step 7's summary ("injected External-resource safety section into existing CLAUDE.md").
 
 ### Step 6 — Post-install pointers
 
@@ -276,8 +294,9 @@ Summarize per target:
 Done.
 
 Created:
-  ./CLAUDE.md  (from template; substituted project name, user name, primary branch)
-  ./AGENTS.md  (from same template; target-specific intro + sibling reminder)
+  ./CLAUDE.md                             (from template; substituted project name, user name, primary branch)
+  ./AGENTS.md                             (from same template; target-specific intro + sibling reminder)
+  ./docs/security/external-resource-safety.md  (shared policy file targeted by the External-resource safety section; verbatim, one per project)
 
 Backups:
   none — neither CLAUDE.md nor AGENTS.md existed before this run
@@ -315,16 +334,18 @@ Companion skills to consider:
 - **Not injecting the sibling-sync block into existing `TEMPLATE_ALIGNED_NO_SYNC` files.** Projects that installed an earlier version of this skill (or hand-authored a template-aligned CLAUDE.md before this skill existed) won't have the sync block. Step 5 step 6 injects it — don't skip, or the pair silently lacks the drift-prevention reminder.
 - **Substituting inside code fences or within backticks.** The template uses substitution tokens in prose, not in code examples. Only substitute in prose contexts.
 - **Using Claude-Code-specific tooling.** This skill is cross-platform. Do not invoke `TodoWrite`, `AskUserQuestion`, `Skill`, or any other tool that isn't shell/file-I/O primitives.
+- **Silently editing an existing file during the security-section migration.** The v2.4 migration is additive and confirmed: insert the verbatim `## External-resource safety` section (placement may flex, text may not), append pointers rather than overwriting user-customized prose, back up + preview + confirm both siblings, and stay idempotent. Never overwrite a user's edited "Trust, then verify" bullet — append a pointer instead.
+- **Emitting the section without its policy file, or substituting into the policy file.** The `## External-resource safety` section points at `docs/security/external-resource-safety.md`; write that file (verbatim from `references/external-resource-safety.md`, no token substitution — it is framework-neutral and shared by both siblings) whenever the section is present. It is one file per project, not one per target. If a customized policy file already exists, leave it — do not clobber.
 
 ## Quick reference
 
 | Step | Action |
 |---|---|
-| 1 | Verify repo/project state; search for CLAUDE.md AND AGENTS.md at root; run **alignment check** and **sibling-sync block check** on each FOUND_AT_ROOT file; compute smart default target |
+| 1 | Verify repo/project state; search for CLAUDE.md AND AGENTS.md at root; run **alignment check**, **sibling-sync block check**, and **security-section check** on each FOUND_AT_ROOT file; compute smart default target |
 | 2 | Collect substitution values + target (claude/agents/both) + optional dogfood override |
 | 3 | Present state (including alignment classification) + proposed actions + substitutions + target; await user confirmation |
-| 4 | Per target: handle existing-file case. **STOP and surface options if filling the gap (sibling MISSING) while the existing file is DIVERGENT.** For TEMPLATE_ALIGNED_WITH_SYNC: leave. For TEMPLATE_ALIGNED_NO_SYNC: inject sync block only. For DIVERGENT: standard replace/merge/skip options. |
-| 5 | Per target: write from template with universal substitutions + target-specific substitutions (`[FILE_TITLE]`, `[AGENT_INTRO]`, `[SIBLING_FILE]`). Inject sync block into any existing TEMPLATE_ALIGNED_NO_SYNC file found in Step 1. |
+| 4 | Per target: handle existing-file case. **STOP and surface options if filling the gap (sibling MISSING) while the existing file is DIVERGENT.** For TEMPLATE_ALIGNED_WITH_SYNC: leave (but offer the security-section migration if MISSING_SECURITY_SECTION). For TEMPLATE_ALIGNED_NO_SYNC: inject sync block. For MISSING_SECURITY_SECTION: offer the additive security-section migration. For DIVERGENT: standard replace/merge/skip options. |
+| 5 | Per target: write from template with universal substitutions + target-specific substitutions (`[FILE_TITLE]`, `[AGENT_INTRO]`, `[SIBLING_FILE]`). Also write the shared `docs/security/external-resource-safety.md` policy file once per project (verbatim, no substitution) whenever the External-resource safety section is present. Inject sync block into any existing TEMPLATE_ALIGNED_NO_SYNC file; inject the External-resource safety section + create the policy file (additive, previewed, both-or-neither) for any MISSING_SECURITY_SECTION file found in Step 1. |
 | 6 | Check for companion-skill prerequisites (git-strategy.md, pitfalls docs); suggest follow-ups; remind about Sibling-sync discipline |
 | 7 | Report created files, sync-block injections, backup paths, placeholders to customize, any divergence callouts, and follow-up skills |
 

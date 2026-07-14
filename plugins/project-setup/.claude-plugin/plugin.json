@@ -1,7 +1,7 @@
 {
   "name": "project-setup",
   "description": "Skills for initializing and configuring new projects (git strategy, etc.)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"
