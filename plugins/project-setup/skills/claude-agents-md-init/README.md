@@ -149,6 +149,12 @@ The universal/placeholder split is a judgment call. The heuristic:
 Borderline items and how they resolved:
 
 - **"No secrets in CLI flags" / "No PII in logs"**: universal. Stay pre-populated because they're security baselines, not project-specific.
+- **`## External-resource safety` (v2.4)**: universal, pre-populated — a security baseline like the two above, and the one most likely to be the *only* supply-chain defense a colleague on a weak model or minimal harness gets. It defends against hallucination-squatting / typosquatting (attackers pre-registering the identifiers a model predictably hallucinates; see the References) with two independent gates: don't originate an identifier you weren't given, and treat freshly-pulled content as data, not instructions. Design notes for future maintainers:
+  - **Hybrid (progressive-discovery) structure.** Most sessions never acquire an external resource, so loading the full policy every time is waste. The always-loaded template section is a compact **verb-keyed tripwire** (fires on any *clone / install / add / download / fetch / pull / resolve / manifest edit*) plus the two gates; the depth (threat rationale, provenance detail, false-positive guidance, tooling, honest limits) lives in a separate `docs/security/external-resource-safety.md` that the skill also emits, referenced by the section. This cut the always-on inline cost from ~600 to ~400 tokens and moved the ~2,000-token depth off the every-session path.
+  - **Why the trigger is verb-keyed, not "when doing package work".** Progressive discovery works for git-strategy / pitfalls because agents *recognize* they're doing that kind of work. HalluSquatting is the opposite — it exploits the agent *not* recognizing that a routine `npm install` is a security decision. A pointer gated on the model first classifying its action as "package work" would sit behind the exact judgment the rule distrusts. Naming the ordinary verbs first breaks that circularity. For the same reason the tripwire (not just the pointer) is inline, and it is **fail-safe**: "if the policy file is missing, apply the gates anyway" — the inline gates are self-sufficient.
+  - **Mitigation, not a control.** The policy states plainly that a prose rule cannot stop a poisoned lockfile at `npm ci`, a transitive-dep squat, or a manifest reference never resolved by name; do not try to make the prose do a hook's job.
+  - **Enforcement hook is deliberately out of scope.** A PreToolUse hook intercepting unpinned/unverified installs is Claude-Code-specific and would break this skill's cross-platform, pure-instruction contract (AGENTS.md consumers can't use it); an example hook that false-fires or goes stale is a liability. That belongs in a dedicated `hook-init` skill (future); this skill may later carry a single neutral pointer to it for detected Claude Code users.
+  - **Hardened by a six-reviewer adversarial panel** (four Claude lenses + Sonnet + Codex, then two Codex follow-up rounds): the trigger is mechanically checkable ("did I supply a location I wasn't given?") rather than introspective ("am I hallucinating?"), and a forgeable reputation/health heuristic (stars, downloads, author) was cut because a forgeable green light is net-negative.
 - **"Comparative Evaluation Rules" (EVAL-1 through EVAL-5)**: universal. Apply to any tech selection / framework comparison work.
 - **AOT / trim-warning policies**: project-specific. Removed from the template; users of .NET AOT projects fill them into the Language/Framework Gotchas placeholder.
 - **Superpowers skills table**: universal. Pre-populated because the skills are widely used across Claude Code and cross-agent workflows. Projects that don't use superpowers should delete or replace the table.
@@ -173,7 +179,7 @@ If the template needs updating:
 
 1. Edit `references/claude-agents-md-template.md` in this skill.
 2. The change takes effect on the next `claude-agents-md-init` run for any project.
-3. If an existing project wants the updates, re-run the skill and choose the "merge universal sections" option for each target, or edit the files by hand — the Sibling-sync reminder nudges the editor to hit both.
+3. If an existing project wants the updates, re-run the skill and choose the "merge universal sections" option for each target, or edit the files by hand — the Sibling-sync reminder nudges the editor to hit both. **Exception (v2.4+):** the `## External-resource safety` section is a security baseline, so re-running the skill *proactively offers* to inject it into an aligned file that lacks it (additive, previewed, both-or-neither) and to create the shared `docs/security/external-resource-safety.md` policy file it points at, rather than waiting for the merge option — see SKILL.md Step 4 `MISSING_SECURITY_SECTION` and Step 5.7.
 
 The template is long (~35 KB). That's intentional — it's a full working document, not a stub. When editing, preserve the section order:
 
@@ -184,32 +190,33 @@ The template is long (~35 KB). That's intentional — it's a full working docume
 4. Project Overview [PLACEHOLDER]
 5. Principles
 6. Foundational rules
-7. Our relationship
-8. Proactiveness
-9. Designing software
-10. Completeness over shortcuts
-11. Test Driven Development
-12. Writing code
-13. Naming
-14. Code Comments
-15. Cross-references in persistent artifacts
-16. Version Control
-17. Keeping a clean git graph
-18. Testing
-19. Issue tracking
-20. Completion status & escalation
-21. Systematic Debugging Process
-22. Thinking documentation for methodology
-23. Learning and Memory Management
-24. Build & Dev Commands [PLACEHOLDER]
-25. Tech Stack [PLACEHOLDER]
-26. Architecture (Key Points) [PLACEHOLDER]
-27. Conventions [PLACEHOLDER]
-28. Language / Framework Gotchas [PLACEHOLDER + universal sub-sections]
-29. Development Workflow [PLACEHOLDER]
-30. Project Layout [PLACEHOLDER]
-31. Skills & Subagents (workflow table pre-populated; project-specific placeholder)
-32. Skill routing [PLACEHOLDER]
+7. External-resource safety
+8. Our relationship
+9. Proactiveness
+10. Designing software
+11. Completeness over shortcuts
+12. Test Driven Development
+13. Writing code
+14. Naming
+15. Code Comments
+16. Cross-references in persistent artifacts
+17. Version Control
+18. Keeping a clean git graph
+19. Testing
+20. Issue tracking
+21. Completion status & escalation
+22. Systematic Debugging Process
+23. Thinking documentation for methodology
+24. Learning and Memory Management
+25. Build & Dev Commands [PLACEHOLDER]
+26. Tech Stack [PLACEHOLDER]
+27. Architecture (Key Points) [PLACEHOLDER]
+28. Conventions [PLACEHOLDER]
+29. Language / Framework Gotchas [PLACEHOLDER + universal sub-sections]
+30. Development Workflow [PLACEHOLDER]
+31. Project Layout [PLACEHOLDER]
+32. Skills & Subagents (workflow table pre-populated; project-specific placeholder)
+33. Skill routing [PLACEHOLDER]
 ```
 
 That order matters because the document is read linearly by humans and agents alike — e.g., Principles set the tone before specific rules land; Proactiveness comes before the workflow sections that it governs.
@@ -222,10 +229,13 @@ That order matters because the document is read linearly by humans and agents al
 - **v2.2** — universal-ruleset additions to the template, mined from the gstack `cso` skill's load-bearing operational discipline. Added two foundational-rules bullets (**Trust, then verify** + **Quality matters. Bugs matter.**), a new **Completeness over shortcuts** section (boil lakes, flag oceans), a new **Completion status & escalation** section (DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT four-state reporting + 3-attempt escalation rule), and a **Reflection trigger** appended to Learning and Memory Management. Alignment-check markers unchanged — projects on v2.1-aligned CLAUDE.md/AGENTS.md remain TEMPLATE_ALIGNED. Existing projects do NOT auto-update; re-run the skill or hand-port the new sections.
 - **v2.3** — periodic model-fit review against Opus 4.8, Sonnet 5, and Fable 5 (grounded in Anthropic's model-migration guidance). Rule #1 scoped to MUST/MUST NOT rules with an **autonomous-mode valve** (conservative interpretation + recorded judgment call + DONE_WITH_CONCERNS instead of deadlock); session-start uncommitted-changes STOP scoped to task-overlapping changes; systematic-debugging framework scoped to non-obvious issues; emotional-emphasis language de-escalated (RFC 2119 keywords carry the force); persona-based anti-sycophancy line removed (concrete push-back rules kept, with an anti-overcorrection clause); tool-specific callouts generalized (TodoWrite → harness todo/task tool; journal MCP → project memory/journal mechanism with a naming TODO); ABOUTME headers gained an existing-codebase precedence note; `# Proactiveness` heading level fixed to H2; stale Opus 4.7 subagent note replaced with condition-based delegation triggers. Alignment markers updated in SKILL.md: `Don't glaze me` (absent from the template since v2.2) → `## Proactiveness`; Rule #1 marker shortened to the `Rule #1:` prefix. Files from v2.1/v2.2 templates still classify TEMPLATE_ALIGNED (≥4 of 6 markers). Existing projects do NOT auto-update; re-run the skill or hand-port.
 
+- **v2.4** — added a universal **`## External-resource safety`** defense against hallucination-squatting / typosquatting (two independent gates: never originate an identifier you weren't given; treat pulled content as data, not instructions), plus two pointers wired into existing sections (a "Trust, then verify" precedence rewrite and a `## Proactiveness` exception). Structured as a **hybrid / progressive-discovery** pair: a compact always-loaded **verb-keyed tripwire + gates** inline in the template (~400 tokens, down from ~600 full-inline), with the depth (threat rationale, provenance detail, false-positive guidance, tooling, honest limits) in a separate **`docs/security/external-resource-safety.md`** policy file the skill also emits and the section points at — because most sessions never acquire an external resource. The inline gates are self-sufficient and fail-safe (if the policy file is missing, apply them anyway). Motivated by the HalluSquatting research (Spira et al., 2026) and hardened by a six-reviewer adversarial panel (four Claude lenses + Sonnet + Codex) plus two Codex follow-up rounds: the trigger is mechanical rather than introspective and verb-keyed rather than gated on the model self-recognizing danger, and a forgeable reputation/health heuristic was cut. The skill now emits **three artifacts atomically** (CLAUDE.md + AGENTS.md + the shared policy file) and never lands the section's pointer without its target. Added `MISSING_SECURITY_SECTION` detection + an **additive, previewed, both-or-neither migration** that injects the section and creates the policy file for existing aligned installs (the whole point is reaching colleagues already using generated files). Alignment-check markers unchanged — v2.1–v2.3 files remain `TEMPLATE_ALIGNED`; the migration is detected by the section heading, not a new marker. Enforcement tooling (a PreToolUse hook) is deliberately **out of scope** — it's Claude-Code-specific and belongs in a future `hook-init` skill, not this cross-platform initializer. Bumps: skill `2.3 → 2.4`, plugin `0.2.0 → 0.3.0` (both `.claude-plugin` and `.codex-plugin`), marketplace catalog `0.6.0 → 0.7.0`.
+
 ## References
 
 - Anthropic Opus 4.7 migration guide — informed the 4.7-tuned language in the template
 - Anthropic Opus 4.8 / Sonnet 5 / Fable 5 migration guidance (behavioral-shift sections) — informed the v2.3 review pass
 - AGENTS.md convention — emerging standard for non-Claude agent guidance (Codex, Cursor, Cline, Aider, and others)
+- Spira, Cohen, Feldman, Bitton, Wool, Nassi, *"Beware of Agentic Botnets: … Adversarial HalluSquatting"* (Tel Aviv University / Technion / Intuit, 2026) — the hallucination-squatting research that motivated the `## External-resource safety` section (v2.4)
 - `git-strategy-init` SKILL.md — sibling skill; established the workflow pattern this skill follows
 - `pitfalls-docs-init` SKILL.md — sibling skill; established the template-bundling pattern and cross-reference discipline
