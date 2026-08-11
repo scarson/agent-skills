@@ -8,7 +8,9 @@ argument-hint: "[optional: specific area/path to focus on, or 'full']"
 
 ## Terminology
 
+<!-- approved-block: rfc2119-terminology v1 — authoritative copy: ../../approved-blocks.md -->
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+<!-- /approved-block: rfc2119-terminology -->
 
 ## Overview
 
@@ -139,9 +141,11 @@ A reduced or cold-sweep run is a **deliberate, recorded** choice, not silent lan
 
 ### Agent model selection
 
-Each subagent SHOULD be invoked using the **latest available Claude Opus model** or **GPT-5 (or successor) at x-high reasoning effort**, unless the user has explicitly instructed otherwise for this run. Performance analysis benefits asymmetrically from maximum reasoning bandwidth, and saving model cost trades poorly against missed regressions that ship to production. If the framework requires a model parameter on dispatch, set it; if it inherits the parent's model, ensure the parent is on the strongest tier before dispatching.
+Each lane subagent SHOULD run at the **flagship tier at high reasoning effort** — the latest Claude Opus at high, or the current OpenAI flagship at high, or a successor *at the same tier* — unless the user has explicitly instructed otherwise for this run. This matches the sibling [`design-review-cycle`](../design-review-cycle/SKILL.md) §Cross-provider policy; the two skills MUST NOT drift apart on tier. Premium/max tiers are reserved for explicit user request.
 
-**Record the request honestly, not a guessed identity.** Some harnesses let you set the subagent *model* but expose **no reasoning-effort knob** (the Claude Code Agent tool, for one). When you can't actually request x-high, record `reasoning_effort: "default (harness exposes no knob)"` in the run metadata rather than claiming x-high — the metadata captures what was *requested*, and an honest "default" is correct where the dial doesn't exist.
+Performance analysis is correctness-critical, so the flagship tier is the floor. "Always the maximum dial" is a different claim, and a weaker one: current-generation analysis holds up well at high, and the lanes differ in how much reasoning they actually need — `cost-map` is structural reasoning over call graphs, while `concurrency` and `algorithmic` carry the load-bearing judgment. Stepping a lane up is a per-lane call worth making deliberately, not a blanket default. If you tune this, tune it against your own runs rather than inheriting a setting from a prior model.
+
+**Record the request honestly, not a guessed identity.** Harnesses vary: some let you set the subagent *model* but expose **no reasoning-effort knob** (the Claude Code Agent tool, for one), while others do expose one per dispatch (a workflow runner's per-agent effort option, for instance). Record what you actually requested — the real value where a dial exists, and `reasoning_effort: "default (harness exposes no knob)"` where it does not. The metadata captures the *request*; an honest "default" is correct where the dial is absent, and inventing a level that was never set corrupts the run ledger for every later comparison.
 
 The runner MUST wait for all dispatched lanes to complete before Phase 3. **A lane that completes by *failing* — errors, times out, or returns nothing — blocks the report exactly as an incomplete run does** (see the abort rule in Phase 3).
 

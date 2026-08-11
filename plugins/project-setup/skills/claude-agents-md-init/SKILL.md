@@ -1,8 +1,8 @@
 ---
 name: claude-agents-md-init
-description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "initialize CLAUDE.md", "bootstrap agent guidance", "add CLAUDE.md and AGENTS.md", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, code comments, version control, testing, debugging, learning/memory), and placeholder sections for project-specific content. Default writes both files; use `--target claude|agents|both` to narrow scope. Each file carries a Sibling-sync reminder pointing to the other. Runs an alignment check on any existing root file and STOPs for human review before standing up a sibling against a divergent one. Cross-platform — git and standard file ops only. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
+description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "initialize CLAUDE.md", "bootstrap agent guidance", "add CLAUDE.md and AGENTS.md", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, code comments, version control, testing, debugging, learning/memory), and placeholder sections for project-specific content. Default writes both files; use `--target claude|agents|both` to narrow scope. Each file carries a Sibling-sync reminder pointing to the other. Runs an alignment check on any existing root file and STOPs for human review before standing up a sibling against a divergent one. Any rewrite of an existing file passes a content-preservation gate — a line-level comparison against the pre-change backup — before the run is reported. Cross-platform — git and standard file ops only. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
 metadata:
-  version: "2.6"
+  version: "2.10"
 ---
 
 # claude-agents-md-init
@@ -12,7 +12,7 @@ Initializes project-root agent-guidance files from a single bundled template, re
 - `CLAUDE.md` — consumed by Claude Code (`claude.ai/code`)
 - `AGENTS.md` — consumed by Codex, Cursor, Cline, Aider, and other AGENTS.md-aware agent frameworks
 
-The template carries the **universal** ruleset that applies across projects and frameworks (RFC 2119 terminology, principles, external-resource safety, relationship, proactiveness, completeness over shortcuts, TDD, writing code, naming, code comments, cross-references in persistent artifacts, version control short-form, testing, issue tracking, completion status & escalation, systematic debugging, thinking documentation, learning and memory, workflow skills table) plus **placeholder** blocks for project-specific content. At write time, two tokens substitute per target:
+The template carries the **universal** ruleset that applies across projects and frameworks (RFC 2119 terminology, principles, external-resource safety, relationship, proactiveness, completeness over shortcuts, TDD, writing code, naming, code comments, self-identifying references, version control short-form, testing, issue tracking, completion status & escalation, systematic debugging, thinking documentation, learning and memory, workflow skills table) plus **placeholder** blocks for project-specific content. At write time, two tokens substitute per target:
 
 - `[AGENT_INTRO]` — the "This file provides guidance to …" intro line; per-target phrasing
 - `[SIBLING_FILE]` — the name of the other file in the Sibling-sync reminder
@@ -33,7 +33,7 @@ Invoke when the user asks to:
 - "initialize CLAUDE.md" / "initialize AGENTS.md"
 - "bootstrap Claude/Codex guidance" for a project
 - "add a CLAUDE.md template" (equivalent for AGENTS.md)
-- install project-root agent instructions following the modern-Claude-tuned convention (Opus 4.7+, reviewed against Opus 4.8 / Sonnet 5 / Fable 5)
+- install project-root agent instructions following the modern-Claude-tuned convention (Opus 4.7+, reviewed against Opus 4.8 / Sonnet 5 / Fable 5 / Opus 5)
 
 Do NOT use for:
 
@@ -87,7 +87,9 @@ Do NOT use for:
 
 6. **Security-section presence check.** For every `TEMPLATE_ALIGNED` file, also check whether the `## External-resource safety` section (added in v2.4) is present. Grep for the literal heading `## External-resource safety`. If absent → the file predates the supply-chain safety section and is a candidate for the additive migration in Step 4 (`MISSING_SECURITY_SECTION`). This is independent of the sync-block state above: a file can be `TEMPLATE_ALIGNED_WITH_SYNC` yet still lack the security section. Also note whether `docs/security/external-resource-safety.md` (the policy file the section points at) exists — the migration in Step 5.7 creates it if missing.
 
-7. **Smart default for `--target`:**
+7. **Workflow-skills plugin availability.** The template's Skills & Subagents table carries its brainstorming/planning rows in three variant blocks (wrapper rows / base rows / omitted). Determine which applies now, using the ordered test in Step 5 sub-step 3a, so it can be presented for confirmation in Step 3 and applied at write time. Record the answer as `superpowers-plus` / `superpowers-base` / `none`.
+
+8. **Smart default for `--target`:**
    - Both missing → default `both` (recommend the full install)
    - `CLAUDE.md` present, `AGENTS.md` missing → default `agents` (fill the gap; see Step 4 for sync-block injection and divergence handling)
    - `AGENTS.md` present, `CLAUDE.md` missing → default `claude`
@@ -125,6 +127,12 @@ Substitutions:
   [BRIEF PROJECT DESCRIPTION]    → (left as TODO placeholder)
 
 Target: both (will write CLAUDE.md AND AGENTS.md)
+
+Workflow-skills router rows:
+  superpowers-plus available → wrapper rows
+    (`superpowers-plus:brainstorming-enhanced`,
+     `superpowers-plus:writing-plans-enhanced`)
+  The other Skills & Subagents rows are unconditional.
 
 Install paths:
   ./CLAUDE.md  (Claude Code — claude.ai/code)
@@ -259,9 +267,19 @@ For each target being written:
    - `[AGENT_INTRO]` → `This file provides guidance to AI coding agents (Codex, Cursor, Cline, Aider, and other AGENTS.md-aware frameworks) when working with code in this repository.`
    - `[SIBLING_FILE]` → `CLAUDE.md`
 
-4. **Preserve all `<!-- TODO: ... -->` / `<!-- PLACEHOLDER: ... -->` blocks untouched** — they are load-bearing for the agent that later customizes the doc.
+3a. **Handle the router-table variant blocks** — keep one, delete the rest, based on which workflow-skills plugin is available:
 
-5. **Write** to the output filename from Step 2. In non-dogfood mode with an existing file selected for replacement in Step 4, create a backup at `<FILENAME>.backup-<timestamp>` first. In dogfood mode, skip the backup — the override guarantees the existing file is untouched.
+   The template's Skills & Subagents table wraps its brainstorming/planning rows in three HTML-comment-delimited blocks: `<!-- ROUTER: superpowers-plus -->`, `<!-- ROUTER: superpowers-base -->`, and `<!-- ROUTER: none -->` (each closed by its `<!-- /ROUTER: ... -->` marker). Every other row in that table is unconditional and sits outside the blocks — leave those alone.
+
+   - **Detection.** Determine which of these is true in your environment, in order: (a) skills from the `superpowers-plus` plugin are available to you (e.g. a `writing-plans-enhanced` skill appears in your available-skills listing, or the plugin's directory exists in your platform's plugin cache) → keep the superpowers-plus block; (b) otherwise, skills from the `superpowers` plugin are available → keep the superpowers-base block; (c) otherwise → keep the none block (the rows are omitted). If you cannot determine availability, ask the user which applies — do not guess.
+   - **Keep exactly ONE block:** delete the two blocks that do not apply — their marker lines and every row between them — and delete the surviving block's own two marker lines as well, leaving only its rows in the table. The `none` block is intentionally empty, so keeping it emits no rows at all.
+   - **No `ROUTER:` marker may survive into the written file.** After the edit, grep the pending content for `ROUTER:` — expect zero hits — and confirm the table has exactly one header separator and no blank line between rows.
+   - Apply the identical result to **both** targets: `CLAUDE.md` and `AGENTS.md` get the same block kept, so the pair stays in sync by construction (this is not a per-target substitution like `[SIBLING_FILE]`).
+   - **Gap-fill runs, where you write only one sibling and the other already exists** (the `--target` smart default of Step 1): you cannot make the pair match by construction, because the existing file is not yours to silently edit. Any file written before v2.8 carries the base rows. So: after writing, compare the existing sibling's router rows against the block you kept. If they differ, say so in Step 7's report, show the two rows you wrote and the two the sibling carries, and offer to hand-port — apply that only on the user's say-so. Do not silently emit a divergent pair, and do not edit the existing sibling without asking.
+
+4. **Preserve all `<!-- TODO: ... -->` / `<!-- PLACEHOLDER: ... -->` blocks untouched** — they are load-bearing for the agent that later customizes the doc. The `ROUTER:` markers are NOT such blocks: sub-step 3a deletes them.
+
+5. **Write** to the output filename from Step 2. In non-dogfood mode, back up any existing file this run will rewrite or edit in place — replacement, merge, `--merge-template`, or either injection below — at `<FILENAME>.backup-<timestamp>` before the first write touches it. The backup is both the undo path and the *input* to sub-step 8's content-preservation gate, so it is required on every path that touches existing content, not only the destructive one. In dogfood mode, skip the backup — the override guarantees the existing file is untouched.
 
 5a. **Write the shared policy file (three-artifact atomicity).** Whenever you write (or migrate in) any `CLAUDE.md`/`AGENTS.md` that contains the `## External-resource safety` section, also write `docs/security/external-resource-safety.md` — verbatim from `references/external-resource-safety.md`, no substitution, creating the `docs/security/` directory if needed. This is the target of the section's pointer. Rules: (a) it is written **once** per project regardless of `--target` (both siblings share it); (b) never emit a CLAUDE.md/AGENTS.md carrying the section's pointer on a fresh write without also landing this file — the section + its policy file land together; (c) if `docs/security/external-resource-safety.md` already exists with **different** content (a user-customized policy), do NOT overwrite it — report the divergence and leave it (the pointer still resolves); (d) in dogfood mode, write it next to the dogfood outputs or skip if the canonical file already exists, consistent with the dogfood short-circuit. The section's own fail-safe ("if that file is missing, apply the gates anyway and flag it") means a later deletion degrades gracefully rather than breaking the gate.
 
@@ -275,6 +293,29 @@ For each target being written:
    - **Create the policy file too.** In the same confirmed step, also create `docs/security/external-resource-safety.md` (verbatim from `references/external-resource-safety.md`) if it does not already exist, so the injected pointer resolves — this is part of the both-or-neither set. If it exists with different content, leave it and report the divergence.
    - **Last resort only.** Surface manual instructions + `--merge-template` only if the file is so divergent that no sensible placement exists.
    Report each injection as a separate line in Step 7's summary ("injected External-resource safety section into existing CLAUDE.md").
+
+8. **Content-preservation gate — run before Step 7, never skip.** Every other check in this skill validates the *shape* of what was written (no `ROUTER:` markers, no unresolved tokens, sibling equality, marker recount). None of them compares the output against the input, so none of them can catch a merge or regeneration that silently drops a project-specific rule — the most expensive failure available here, because these files are rulesets and a dropped line is a deleted rule.
+
+   Applies to every file this run **rewrote or edited in place** (Step 4 DIVERGENT merge (c), a `--merge-template` regeneration, sync-block injection at sub-step 6, security-section injection at sub-step 7) and to a file **created as a copy of an existing sibling** (option (b) of Step 4's divergence STOP), where the reference is the sibling the content came from rather than a backup. **Does not apply to a clean create** — nothing existed, so nothing can be lost.
+
+   - **The reference copy is the backup.** Once the file is overwritten, the backup from sub-step 5 is the only copy of the input. Do not delete, move, or overwrite a backup until this gate has run and its result is in the Step 7 report. This skill never deletes backups on its own — leave them for the user.
+   - **What to compute:** the set of non-blank lines present in the reference copy and absent from the written file. Whole-line and order-insensitive — content that moved between sections is not a loss. One illustration, for an agent with a POSIX shell:
+
+     ```sh
+     grep -vE '^[[:space:]]*$' NEW > new.nonblank.tmp
+     grep -Fxv -f new.nonblank.tmp OLD | grep -vE '^[[:space:]]*$'
+     ```
+
+     Delete the temp file afterwards — it is scratch, not an artifact of the install.
+
+     Both `-F` (fixed strings, so markdown punctuation isn't read as a regex) and `-x` (whole line) are load-bearing, and the blank lines must come out of the pattern file: drop `-x` while a blank pattern is present and the empty pattern matches every line, so the check reports nothing and reads as a clean pass. Any equivalent set difference is fine (`comm -23` over two `sort -u` copies, PowerShell `Compare-Object`, or a read-and-compare in your own head for a short file) — the semantics above are the requirement, the command is only an example.
+   - **Classify every hit. Silence is not the pass condition; an explicit classification is.** The check is noisy by design — a reworded template rule reads as "dropped" alongside a genuine loss. Put each line in exactly one bucket:
+     - **Intentional replacement** — old *template* text superseded by the current template's wording, or content the user explicitly agreed to drop. Keep it out; carry it to the report.
+     - **Accidental drop** — anything project-specific: a pitfall entry, a build or tooling note, an `<!-- ... -->` comment the project's authors wrote, a path, a rule with no counterpart in the new file. **Restore it before reporting.**
+
+     Do not skim the list and move on. A line you cannot confidently place is an accidental drop — restore it.
+   - **Report both outcomes** in Step 7: the accidental drops you restored, and the intentional replacements as **behavior deltas**. A rule whose wording changed is a rule whose meaning may have changed, and the user is the one who knows whether that matters.
+   - **One exception — the declared destructive replace** (option (b) of Step 4's `DIVERGENT` case: back up and replace with the template, "preserves content in backup only"). Wholesale loss is the user's stated choice there, so run the gate but report only the count of non-blank lines that did not carry over, plus the backup path. A line-by-line classification of a file the user chose to discard is noise.
 
 ### Step 6 — Post-install pointers
 
@@ -298,8 +339,18 @@ Created:
   ./AGENTS.md                             (from same template; target-specific intro + sibling reminder)
   ./docs/security/external-resource-safety.md  (shared policy file targeted by the External-resource safety section; verbatim, one per project)
 
-Backups:
+Backups (inputs to the content-preservation check — delete only once
+you're satisfied with the result below):
   none — neither CLAUDE.md nor AGENTS.md existed before this run
+
+Content preservation (pre-change lines vs. written file):
+  not applicable — clean create, no prior content to lose
+
+  (On any run that rewrote or edited an existing file, this block instead
+   lists: lines restored after the check found them dropped, and the
+   intentional template-text replacements, called out as behavior deltas
+   to review. An empty check is a result to state, not a reason to omit
+   the block.)
 
 PLACEHOLDER sections to customize in BOTH files (find them via
 `grep '<!-- TODO' CLAUDE.md AGENTS.md`):
@@ -314,6 +365,9 @@ PLACEHOLDER sections to customize in BOTH files (find them via
   - ## Skills & Subagents → "Project-specific skills" subsection
   - ## Skill routing → key routing rules list
 
+Workflow-skills router rows:
+  kept the superpowers-plus block (wrapper rows); other rows unconditional
+
 Sibling-sync discipline:
   Both files carry a reminder at the top. When you edit one, also update
   the other. They should stay identical except for the intro line and
@@ -327,11 +381,14 @@ Companion skills to consider:
 ## Common mistakes
 
 - **Installing at a non-root path.** CLAUDE.md / AGENTS.md are always at the project root. Subdirectory copies exist in monorepos but aren't managed by this skill.
-- **Overwriting an existing file without a backup.** Always back up. Existing agent-guidance files accumulate load-bearing project-specific content; losing it is expensive.
+- **Overwriting an existing file without a backup.** Always back up. Existing agent-guidance files accumulate load-bearing project-specific content; losing it is expensive. Making the backup is necessary but not sufficient — sub-step 8 *reads* it, so a backup nobody compares against is just an undo the user has to discover they need.
+- **Passing every shape check and calling the merge verified.** Zero `ROUTER:` hits, zero unresolved tokens, intact TODO blocks, normalized sibling equality, 6/6 alignment markers — all of that describes the file you wrote, and none of it describes the file you replaced. A regeneration that dropped three project-specific lines passes all five. Sub-step 8's content-preservation gate is the only check pointed at the input: run it on every path that rewrites an existing file, classify each hit as intentional replacement or accidental drop instead of eyeballing the list, and keep the backup until you have.
 - **Treating `--target=claude` and `--target=agents` as mutually exclusive by default.** They're not — the happy path is `--target=both`. Projects that use only one framework can narrow, but "both" is the default when neither file exists.
 - **Letting the two files diverge silently.** The Sibling-sync reminder at the top of each output exists for a reason. If a user edits one file, surface the sibling and ask if the same edit should apply there.
 - **Skipping the alignment check on existing files.** If the existing CLAUDE.md is `DIVERGENT` (doesn't follow the template shape), writing AGENTS.md from the template anyway creates an out-of-sync pair at minute zero. The alignment check + STOP (Step 4 "MISSING, sibling DIVERGENT") is what prevents that. Don't hand-wave past it.
 - **Not injecting the sibling-sync block into existing `TEMPLATE_ALIGNED_NO_SYNC` files.** Projects that installed an earlier version of this skill (or hand-authored a template-aligned CLAUDE.md before this skill existed) won't have the sync block. Step 5 step 6 injects it — don't skip, or the pair silently lacks the drift-prevention reminder.
+- **Leaving `ROUTER:` markers in the written file, or keeping more than one block.** Step 5 sub-step 3a is keep-exactly-one-then-delete-all-markers: the two blocks that don't apply go entirely, and the surviving block's own marker lines go too. Leaving a marker behind ships an HTML comment that breaks the markdown table it sits inside; keeping two blocks ships duplicate brainstorming/planning rows pointing at different skills. Grep the pending content for `ROUTER:` before writing — zero hits.
+- **Letting the two siblings get different router blocks.** The availability answer is a property of the environment, not of the target file. `CLAUDE.md` and `AGENTS.md` MUST keep the same block; a per-target difference here is exactly the drift the sibling-sync discipline exists to prevent.
 - **Substituting inside code fences or within backticks.** The template uses substitution tokens in prose, not in code examples. Only substitute in prose contexts.
 - **Using Claude-Code-specific tooling.** This skill is cross-platform. Do not invoke `TodoWrite`, `AskUserQuestion`, `Skill`, or any other tool that isn't shell/file-I/O primitives.
 - **Silently editing an existing file during the security-section migration.** The v2.4 migration is additive and confirmed: insert the verbatim `## External-resource safety` section (placement may flex, text may not), append pointers rather than overwriting user-customized prose, back up + preview + confirm both siblings, and stay idempotent. Never overwrite a user's edited "Trust, then verify" bullet — append a pointer instead.
@@ -341,13 +398,13 @@ Companion skills to consider:
 
 | Step | Action |
 |---|---|
-| 1 | Verify repo/project state; search for CLAUDE.md AND AGENTS.md at root; run **alignment check**, **sibling-sync block check**, and **security-section check** on each FOUND_AT_ROOT file; compute smart default target |
+| 1 | Verify repo/project state; search for CLAUDE.md AND AGENTS.md at root; run **alignment check**, **sibling-sync block check**, and **security-section check** on each FOUND_AT_ROOT file; determine **workflow-skills plugin availability** (superpowers-plus / superpowers-base / none); compute smart default target |
 | 2 | Collect substitution values + target (claude/agents/both) + optional dogfood override |
-| 3 | Present state (including alignment classification) + proposed actions + substitutions + target; await user confirmation |
+| 3 | Present state (including alignment classification) + proposed actions + substitutions + target + **which router block will be kept**; await user confirmation |
 | 4 | Per target: handle existing-file case. **STOP and surface options if filling the gap (sibling MISSING) while the existing file is DIVERGENT.** For TEMPLATE_ALIGNED_WITH_SYNC: leave (but offer the security-section migration if MISSING_SECURITY_SECTION). For TEMPLATE_ALIGNED_NO_SYNC: inject sync block. For MISSING_SECURITY_SECTION: offer the additive security-section migration. For DIVERGENT: standard replace/merge/skip options. |
-| 5 | Per target: write from template with universal substitutions + target-specific substitutions (`[FILE_TITLE]`, `[AGENT_INTRO]`, `[SIBLING_FILE]`). Also write the shared `docs/security/external-resource-safety.md` policy file once per project (verbatim, no substitution) whenever the External-resource safety section is present. Inject sync block into any existing TEMPLATE_ALIGNED_NO_SYNC file; inject the External-resource safety section + create the policy file (additive, previewed, both-or-neither) for any MISSING_SECURITY_SECTION file found in Step 1. |
+| 5 | Per target: write from template with universal substitutions + target-specific substitutions (`[FILE_TITLE]`, `[AGENT_INTRO]`, `[SIBLING_FILE]`). **Keep exactly one `ROUTER:` block in the Skills & Subagents table and delete the others plus all markers** (same block for both targets). Also write the shared `docs/security/external-resource-safety.md` policy file once per project (verbatim, no substitution) whenever the External-resource safety section is present. Inject sync block into any existing TEMPLATE_ALIGNED_NO_SYNC file; inject the External-resource safety section + create the policy file (additive, previewed, both-or-neither) for any MISSING_SECURITY_SECTION file found in Step 1. Back up every file about to be rewritten or edited in place, then — before reporting and before any backup is cleaned up — run the **content-preservation gate** against that backup for each such file: compute the non-blank lines present before and absent after, classify each as intentional replacement or accidental drop, restore the drops. |
 | 6 | Check for companion-skill prerequisites (git-strategy.md, pitfalls docs); suggest follow-ups; remind about Sibling-sync discipline |
-| 7 | Report created files, sync-block injections, backup paths, placeholders to customize, any divergence callouts, and follow-up skills |
+| 7 | Report created files, sync-block injections, retained backup paths, the **content-preservation result** (lines restored + intentional replacements as behavior deltas), placeholders to customize, any divergence callouts, and follow-up skills |
 
 ## Relationship to other skills
 

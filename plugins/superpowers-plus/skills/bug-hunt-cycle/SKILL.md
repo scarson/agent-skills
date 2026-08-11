@@ -8,7 +8,9 @@ argument-hint: "<scope, e.g. 'Phase 9', 'PR 45', 'internal/feed/'>"
 
 ## Terminology
 
+<!-- approved-block: rfc2119-terminology v1 — authoritative copy: ../../approved-blocks.md -->
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+<!-- /approved-block: rfc2119-terminology -->
 
 ## Overview
 
@@ -21,6 +23,15 @@ This skill orchestrates several sibling workhorses in this plugin: the hunter me
 ### Scope validation
 
 If `$ARGUMENTS` is empty or unclear (e.g., the user invoked the cycle without specifying a scope), the runner MUST ask the user for a scope before proceeding to Phase 1. Useful scope shapes: a phase reference (e.g., "Phase 9"), a PR number (e.g., "PR 45"), a directory or package path (e.g., `internal/feed/`), a commit range, or a feature name (e.g., "the alert evaluation pipeline"). The runner MUST NOT guess a scope or default to "everything" — bug hunters perform best on a precise, bounded surface.
+
+### Mode declaration — is the full cycle warranted?
+
+Declare the mode before Phase 1 and state it in the consolidated report, naming the evidence:
+
+- **Full cycle (default for a substantial surface).** All eight phases. Honest cost: 4 hunter agents + verification dispatches during cross-validation + whatever `writing-plans-enhanced` and `plan-review-cycle` spawn downstream. Warranted when the scope genuinely exceeds what one hunter can hold and reason about at once, or when the work will be re-audited on a schedule and the artifacts need to accumulate.
+- **Snapshot (a small, single-context surface).** A scope one strong model reads in a single window — a handful of files, one package, a small PR — does not need four parallel methodologies cross-validated and a remediation plan reviewed. The machinery is mostly ceremony there. Say so and recommend invoking one or two hunter skills directly (`bug-hunter-holistic` for a scope small enough to load whole; `bug-hunter-differential` when the risk is paired-function drift), then handing findings straight to the user.
+
+The runner MUST NOT run the full cycle silently on a scope the snapshot covers. Recommending the cheaper route when it fits is the judgment this declaration exists to force; a user who wants the full cycle anyway says so and gets it.
 
 ---
 
@@ -54,7 +65,11 @@ The runner MUST determine today's date and the scope slug (e.g., `phase9`, `pr-4
 
 ### Agent model selection
 
-Each subagent SHOULD be invoked using the **latest available Claude Opus model** or **GPT-5 (or successor) at x-high reasoning effort**, unless the user has explicitly instructed otherwise for this run. Bug hunting is correctness-critical analysis — it benefits asymmetrically from maximum reasoning bandwidth, and saving model cost trades poorly against missed bugs that ship to production. If the agent framework requires a specific model parameter on dispatch, the runner MUST set it accordingly; if the framework inherits the parent's model, the runner MUST ensure the parent is on the strongest tier before dispatching.
+Each hunter subagent SHOULD run at the **flagship tier at high reasoning effort** — the latest Claude Opus at high, or the current OpenAI flagship at high, or a successor *at the same tier* — unless the user has explicitly instructed otherwise for this run. This matches the sibling [`design-review-cycle`](../design-review-cycle/SKILL.md) §Cross-provider policy; the two skills MUST NOT drift apart on tier. Premium/max tiers are reserved for explicit user request.
+
+Bug hunting is correctness-critical, so the flagship tier is the floor rather than a nice-to-have. But "always the maximum dial" is not the same claim: current-generation review accuracy holds well at high, so spending the top setting on every dispatch buys less than it used to. Reserve the step up for a scope where a hunter has already come back thin on code you have reason to believe is risky.
+
+If the agent framework takes a model parameter on dispatch, the runner MUST set it. If it inherits the parent's model, the runner MUST ensure the parent is on the flagship tier before dispatching. If the framework exposes **no reasoning-effort knob** (the Claude Code Agent tool, for one), record the effort as `default (harness exposes no knob)` rather than claiming a level that was never requested.
 
 ### Agent prompts
 
@@ -136,13 +151,15 @@ The runner MUST wait for all four subagents to complete before proceeding to Pha
 
 Read all four reports (both from agent responses and the files in `docs/bug-hunts/`). Build a unified findings list.
 
-**COMPLETENESS REQUIREMENT:** The runner MUST account for every single finding from every hunter report. Before starting cross-validation, the runner MUST enumerate all findings across all 4 reports. Every finding MUST appear in the consolidated report as one of: confirmed bug, design decision, false positive, or out-of-scope. **The runner MUST NOT decide what's "too minor" to include — that's the user's decision in Phase 5.** Silently dropping findings defeats the entire purpose of the bug hunt.
+**COMPLETENESS REQUIREMENT:** The runner MUST account for every single finding from every hunter report. Before starting cross-validation, the runner MUST enumerate all findings across all 4 reports. Every finding MUST appear in the consolidated report as one of: confirmed bug, design decision, false positive, or out-of-scope — and in the §3e reconciliation table, which is what makes that claim checkable rather than asserted. **The runner MUST NOT decide what's "too minor" to include — that's the user's decision in Phase 5.** Silently dropping findings defeats the entire purpose of the bug hunt.
 
 ### 3a. Deduplicate
 
 Many findings will overlap. Group findings that describe the same underlying issue. Note consensus — "all four found this" is a strong signal; "only one found this" needs extra scrutiny.
 
 ### 3b. Cross-validate EVERY finding
+
+**If you dispatch verifiers rather than validating in-session, group them by file.** One verifier agent per finding does not scale — thirty findings become thirty agents, most of them re-reading the same file. Dispatch over **co-located findings** instead: up to ~3 *same-file* findings per verifier, each assessed independently and returned with its own verdict. The verifier shares the file read, not the judgment. Do NOT group findings across unrelated files into one verifier — that dilutes attention and reintroduces the false-negative risk the grouping was meant to avoid. One verdict per finding either way, which is what makes the completeness check below mechanical.
 
 For each unique finding, determine its validity:
 
@@ -168,7 +185,7 @@ If a fix has **larger scope** than the scoped work (e.g., modifying shared utili
 
 ### 3d. Write consolidated report
 
-Write the consolidated report to `docs/bug-hunts/<date>-<slug>-consolidated.md` using this structure:
+Write the consolidated report to `docs/bug-hunts/<date>-<slug>-consolidated.md` using the structure below. **Match its length to the findings, not to the template** — every confirmed bug earns its lines, and a section with nothing in it earns the word "None". Do not pad with restated summaries, per-hunter narration, or boilerplate scaffolding around an empty result; rank by what the reader acts on first, and let a long tail of minor findings sit below the ones that matter rather than competing with them.
 
 ```markdown
 # <Scope> Bug Hunt — Consolidated Findings
@@ -220,9 +237,26 @@ Write the consolidated report to `docs/bug-hunts/<date>-<slug>-consolidated.md` 
 **Recommendation:** <fix in this cycle or document for later>
 ```
 
-**COMPLETENESS CHECK:** Before moving on, re-read every hunter report and verify that every finding is accounted for in the consolidated report. Count the findings: the total of confirmed + design decisions + false positives + out-of-scope MUST equal or exceed the total unique findings across all hunter reports. If any are missing, add them now.
+### 3e. Reconciliation table (gating artifact)
 
-After writing the consolidated report, update your private journal (or equivalent reflection store) with key observations: what patterns emerged across hunters, which findings surprised you, what the false-positive rate looked like, and any insights about the codebase's risk profile.
+"Every finding is accounted for" is only real if something checks it. Re-reading the reports and eyeballing a count is the check that silently fails — it passes whether or not a finding was dropped, because nothing names what should be there. Replace it with a table the consolidated report carries:
+
+```markdown
+## Reconciliation
+
+| Hunter | Raw finding | Merged into | Disposition |
+|---|---|---|---|
+| exploratory | E1 — retry loop drops the last error | B2 | confirmed bug |
+| holistic | H4 — same as E1 | B2 | duplicate |
+| multipass | M2 — nil deref in adapter teardown | — | false positive (guarded at line 88) |
+| differential | D1 — encode/decode disagree on empty slice | B5 | confirmed bug |
+```
+
+Every raw finding from every hunter report appears exactly once, mapped to a consolidated ID or to a terminal disposition (duplicate / false positive / out-of-scope / design decision). A raw finding that appears in no row is a **coverage leak** and MUST block the Phase 8 commit until it is placed.
+
+The table is the artifact, not the assertion: a reader — or the next agent — can check it against the hunter reports without redoing the analysis, which is exactly what a prose "I verified completeness" claim cannot offer. The sibling [`design-review-cycle`](../design-review-cycle/SKILL.md) enforces the same property at closure by mapping every diff hunk to a ledger row; this is that discipline applied to findings.
+
+After writing the consolidated report, record observations in the project's memory store: what patterns emerged across hunters, which findings surprised you, what the false-positive rate looked like, and any insights about the codebase's risk profile. Prefer a store the project has deliberately set up — a dated `docs/learnings/` file, a `gstack-learn`-style command, or whatever the project uses — since its presence signals where the team wants this kind of record to live. Failing that, fall back to the agent's own native memory (Claude's `MEMORY.md` / project memory, Codex's equivalent). If neither is apparent, surface the observations to the user and ask whether and where to record them; they MUST NOT be silently dropped.
 
 ---
 
@@ -328,7 +362,7 @@ This appendix is the persistent record. It MUST be written to the plan file — 
 
 Before committing, the runner MUST rigorously review the fix plan for subagent-readiness by invoking [`plan-review-cycle`](../plan-review-cycle/SKILL.md) (a sibling skill in this plugin — always present when this cycle is). `plan-review-cycle` owns the multi-round adversarial review discipline; the cycle MUST NOT duplicate it here.
 
-After the review cycle completes, the runner SHOULD log observations about plan quality and recurring patterns to a private journal (or whatever pattern-store the project uses — an MCP journal, a `gstack-learn`-style command, a dated `docs/learnings/` file, etc.). Capture:
+After the review cycle completes, the runner SHOULD record observations about plan quality and recurring patterns to the project's memory store, following [`plan-review-cycle`](../plan-review-cycle/SKILL.md) §After completion's cascade (project store → agent-native memory → ask the user; never silently dropped) — the runner has just invoked that skill, so its guidance is already at hand and MUST NOT be restated differently here. Capture:
 
 - **Type:** pattern
 - **Key:** `plan-review-[slug]`
@@ -337,6 +371,8 @@ After the review cycle completes, the runner SHOULD log observations about plan 
 ---
 
 ## Phase 8: Commit Reports
+
+**Gate:** the §3e reconciliation table MUST be complete before this commit — every raw hunter finding mapped to a consolidated ID or a terminal disposition. An unplaced finding is a coverage leak and blocks the commit until it is placed.
 
 The runner MUST stage and commit all bug hunt artifacts:
 

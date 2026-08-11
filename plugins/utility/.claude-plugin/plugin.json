@@ -1,7 +1,7 @@
 {
   "name": "utility",
   "description": "General-purpose utility skills (url-to-markdown, etc.)",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"
@@ -9,5 +9,9 @@
   "homepage": "https://github.com/scarson/agent-skills",
   "repository": "https://github.com/scarson/agent-skills",
   "license": "MIT",
-  "keywords": ["skills", "utilities", "tools"]
+  "keywords": [
+    "skills",
+    "utilities",
+    "tools"
+  ]
 }

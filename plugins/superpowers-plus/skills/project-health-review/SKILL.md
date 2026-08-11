@@ -8,7 +8,9 @@ argument-hint: "[optional: specific area to focus on, or 'full' for all dimensio
 
 ## Terminology
 
+<!-- approved-block: rfc2119-terminology v1 — authoritative copy: ../../approved-blocks.md -->
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+<!-- /approved-block: rfc2119-terminology -->
 
 ## Overview
 
@@ -20,14 +22,16 @@ Focus: **$ARGUMENTS** (default: full review across all dimensions)
 
 ## Philosophy
 
-This is an adversarial review. Every agent's job is to find problems — not to praise what's working. If an agent has nothing critical to say about a dimension, that's acceptable, but the bar for "nothing to report" SHOULD be very high — agents SHOULD prefer reporting a small issue over reporting nothing.
+This is an adversarial review. Every agent's job is to find problems — not to praise what's working.
+
+**Report what you find; the runner filters.** Suppressing a finding to look disciplined and manufacturing one to look thorough are the same defect — both stop the review from tracking the project. An agent that finds something real reports it, however small, and does not decide on the runner's behalf that it isn't worth the runner's time; the cross-validation pass in `health-review-cycle` is where findings get dismissed, and it can only dismiss what it was told about. What agents MUST NOT do is *generate* filler: inventing style nits, restating a preference as a defect, or padding a thin dimension to avoid returning little.
 
 **Anti-sycophancy rules for all agents:**
 - Agents MUST NOT open with "the project is generally well-structured" or similar
 - Agents MUST NOT soften findings with "but overall the code is solid"
 - Agents MUST NOT give scores or grades — just report problems
-- Agents MUST NOT pad the report with minor style nits to look thorough — they MUST only report findings that would matter to a senior engineer evaluating this project
-- If an agent genuinely finds no significant issues in its dimension, it MUST say "No significant findings" and explain in one sentence what it looked at
+- Agents MUST NOT manufacture findings to look thorough — no invented style nits, no preferences dressed as defects
+- If an agent genuinely finds no significant issues in its dimension, it MUST say "No significant findings" and explain in one sentence what it looked at. That is a legal outcome, not a failure — and it is honest in a way a padded list is not
 
 ---
 
@@ -37,7 +41,11 @@ The runner MUST launch **5 parallel agents**, one per dimension below. Each agen
 
 ### Agent model selection
 
-Each subagent SHOULD be invoked using the **latest available Claude Opus model** or **GPT-5 (or successor) at x-high reasoning effort**, unless the user has explicitly instructed otherwise for this run. Health review is correctness-critical adversarial analysis — it benefits asymmetrically from maximum reasoning bandwidth, and saving model cost trades poorly against missed problems that ship to production. If the agent framework requires a specific model parameter on dispatch, the runner MUST set it accordingly; if the framework inherits the parent's model, the runner MUST ensure the parent is on the strongest tier before dispatching.
+Each dimension subagent SHOULD run at the **flagship tier at high reasoning effort** — the latest Claude Opus at high, or the current OpenAI flagship at high, or a successor *at the same tier* — unless the user has explicitly instructed otherwise for this run. This matches the sibling [`design-review-cycle`](../design-review-cycle/SKILL.md) §Cross-provider policy; the two skills MUST NOT drift apart on tier. Premium/max tiers are reserved for explicit user request.
+
+Adversarial review is correctness-critical, so the flagship tier is the floor rather than a nice-to-have. But "always the maximum dial" is a different claim: current-generation review accuracy holds well at high, so the top setting on every dispatch buys less than it used to.
+
+If the agent framework takes a model parameter on dispatch, the runner MUST set it. If it inherits the parent's model, the runner MUST ensure the parent is on the flagship tier before dispatching. If the framework exposes **no reasoning-effort knob**, record the effort as `default (harness exposes no knob)` rather than claiming a level that was never requested.
 
 ### Per-agent instructions
 

@@ -244,4 +244,30 @@ else
   warn "$REPO_ROOT/plugins does not exist"
 fi
 
+# --- git hooks ---
+#
+# Point git at the repo's tracked hooks directory so the pre-commit plugin version check runs.
+# core.hooksPath lives in .git/config, which linked worktrees share, so this covers worktrees too.
+# See docs/releasing.md for what the check enforces.
+
+install_hooks() {
+  local current
+  current="$(git -C "$REPO_ROOT" config --get core.hooksPath 2>/dev/null || true)"
+
+  if [[ "$current" == ".githooks" ]]; then
+    log "skip: core.hooksPath already .githooks"
+    return 0
+  fi
+
+  if [[ -n "$current" ]]; then
+    warn "core.hooksPath is set to '$current', not .githooks — leaving it alone; set it yourself to enable the plugin version check"
+    return 0
+  fi
+
+  run git -C "$REPO_ROOT" config core.hooksPath .githooks
+  log "configured: core.hooksPath -> .githooks (pre-commit plugin version check)"
+}
+
+install_hooks
+
 log "done"

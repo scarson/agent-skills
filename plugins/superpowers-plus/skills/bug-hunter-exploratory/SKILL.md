@@ -7,7 +7,9 @@ description: Find correctness bugs in source code through depth-first exploratio
 
 ## Terminology
 
+<!-- approved-block: rfc2119-terminology v1 — authoritative copy: ../../approved-blocks.md -->
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+<!-- /approved-block: rfc2119-terminology -->
 
 ## Role
 

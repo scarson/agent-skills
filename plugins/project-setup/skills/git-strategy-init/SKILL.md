@@ -1,8 +1,8 @@
 ---
 name: git-strategy-init
-description: Use when setting up a new or existing repository with git-worktree-based conventions for multi-agent or multi-branch workflows. Triggers on "set up git strategy", "initialize git workflow", "add git-strategy.md", "adopt the worktree workflow", or similar requests. Generates a project-specific git-strategy.md from a bundled template, auto-detects current branch / branching pattern / forge, updates .gitignore, and links the doc from any existing CLAUDE.md / AGENTS.md. For two-branch gitflow projects (integration branch + release branch), retains and substitutes the bundled §Release branch section covering the integration → release publication PR mechanic; for single-branch projects it removes that section entirely. Cross-platform — instructions rely on git and standard file operations only; no Claude-Code-specific tooling.
+description: Use when setting up a new or existing repository with git-worktree-based conventions for multi-agent or multi-branch workflows. Triggers on "set up git strategy", "initialize git workflow", "add git-strategy.md", "adopt the worktree workflow", or similar requests. Generates a project-specific git-strategy.md from a bundled template, auto-detects current branch / branching pattern / forge, updates .gitignore, and links the doc from any existing CLAUDE.md / AGENTS.md. For two-branch gitflow projects (integration branch + release branch), retains and substitutes the bundled §Release branch section covering the integration → release publication PR mechanic; for single-branch projects it removes that section entirely. Every existing file the run edits is backed up first and passes a content-preservation gate — a line-level comparison against the pre-change copy — before the run is reported. Cross-platform — instructions rely on git and standard file operations only; no Claude-Code-specific tooling.
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 # git-strategy-init
@@ -196,9 +196,11 @@ Wait for user confirmation before proceeding.
    - **Bitbucket:** Prepend a one-line note near the top of the doc: `> **Forge note:** This project uses Bitbucket. The \`gh\` commands below are placeholders — substitute with your forge's CLI (Bitbucket has no official equivalent; use the web UI or a third-party tool).`
    - **Unknown / self-hosted:** Similar note, telling the user to verify the commands apply to their forge.
 
-9. **Write** the filled-out content to the chosen output location.
+9. **Back up before any write that touches an existing file.** Copy it to `<FILENAME>.backup-<timestamp>` before the first write reaches it. This covers every path in this skill that touches existing content: overwriting a `git-strategy.md` the user chose in Step 1 sub-step 3, the `.gitignore` append in Step 5, the `CLAUDE.md` / `AGENTS.md` edits in Step 6, and the `implementation-pitfalls.md` append in Step 6.5. The backup is both the undo path and the *input* to the content-preservation gate in Step 6.6, so it is required on the additive paths too, not only on the destructive one. A file this run creates from nothing needs no backup. Leave backups in place until the gate has run and its result is in the Step 7 report; this skill never deletes them on its own.
 
-   If the output directory does not exist (e.g. user chose a custom path), create parent directories as needed.
+10. **Write** the filled-out content to the chosen output location.
+
+    If the output directory does not exist (e.g. user chose a custom path), create parent directories as needed.
 
 ### Step 5 — Update .gitignore
 
@@ -304,7 +306,28 @@ This step is the complement to §Multi-agent coordination → Output persistence
 
 4. **Placement within the pitfalls doc:** append after the last domain/topic section but BEFORE `# Appendix A: Historical Changelog` (if present). If the pitfalls doc has no appendices, append at the end of the file.
 
-5. **Do not alter existing content** in `implementation-pitfalls.md` beyond adding the new section. If the file's structure is unclear (no clear end-of-domain-sections landmark), surface to the user rather than guess at placement.
+5. **Do not alter existing content** in `implementation-pitfalls.md` beyond adding the new section. If the file's structure is unclear (no clear end-of-domain-sections landmark), surface to the user rather than guess at placement. Step 6.6 is what establishes you didn't — "append only" is an intent, and an insertion placed before `# Appendix A` rewrites the file around that point.
+
+### Step 6.6 — Content-preservation gate
+
+**Run before Step 7, never skip.** Every other check in this skill confirms the intended content is *present*: the reference line landed, the worktree path is in `.gitignore`, §Orchestration is in the pitfalls doc. None of them checks whether content that was in the file *before* the run is still there. This skill's edits are described as appends, but an agent that reads a file, adds a section, and writes the whole thing back can drop lines anywhere in it — and every check above still passes. These are the project's rulesets; a dropped line is a deleted rule.
+
+Applies to every file this run **rewrote or edited in place**: an overwritten `git-strategy.md`, `.gitignore`, each `CLAUDE.md` / `AGENTS.md` edited in Step 6, and `implementation-pitfalls.md` if Step 6.5 appended to it. **Does not apply to a file created from nothing** — no prior content, nothing to lose.
+
+- **The reference copy is the backup** from Step 4 sub-step 9. Once the file is written, that backup is the only copy of the input. Do not delete, move, or overwrite it until this gate has run and its result is in the Step 7 report.
+- **What to compute:** the set of non-blank lines present in the backup and absent from the written file. Whole-line and order-insensitive — content that moved within the file is not a loss. One illustration, for an agent with a POSIX shell:
+
+  ```sh
+  grep -vE '^[[:space:]]*$' NEW > new.nonblank.tmp
+  grep -Fxv -f new.nonblank.tmp OLD | grep -vE '^[[:space:]]*$'
+  ```
+
+  Delete the temp file afterwards — it is scratch, not an artifact of the install.
+
+  Both `-F` (fixed strings, so markdown punctuation isn't read as a regex) and `-x` (whole line) are load-bearing, and the blank lines must come out of the pattern file: drop `-x` while a blank pattern is present and the empty pattern matches every line, so the check reports nothing and reads as a clean pass. Any equivalent set difference is fine (`comm -23` over two `sort -u` copies, PowerShell `Compare-Object`, or reading a short file yourself) — the semantics above are the requirement, the command is only an example.
+- **Every edit this skill makes is additive, so the expected result is empty — and empty is the pass condition.** Unlike a template regeneration, nothing here is supposed to replace anything: Step 5 appends to `.gitignore`, Step 6 adds a reference line or a section, Step 6.5 appends §Orchestration. There is no "intentional replacement" bucket to sort into. **Any line present before and absent after is an accidental drop — restore it.** A non-empty result is a bug in the edit, not a judgment call, and it is never something to explain away in the report.
+- **One exception — the declared overwrite.** If the user chose "overwrite" against an existing `git-strategy.md` in Step 1 sub-step 3, wholesale loss is their stated choice. Run the gate on that file but report only the count of non-blank lines that did not carry over, plus the backup path. A line-by-line list of a doc the user chose to replace is noise.
+- **Report the result** in Step 7 for every file the gate covered, including the empty ones. An empty check is a result to state, not a reason to omit the line.
 
 ### Step 7 — Report
 
@@ -322,7 +345,24 @@ AGENTS.md:          not found — skipped
 Pitfalls cross-ref: appended §Orchestration to docs/pitfalls/implementation-pitfalls.md
                     (OR: implementation-pitfalls.md not found — run pitfalls-docs-init
                      to install pitfalls docs with §Orchestration pre-populated)
+
+Backups (inputs to the content-preservation check — delete only once
+you're satisfied with the result below):
+                    .gitignore.backup-20260810T074500
+                    CLAUDE.md.backup-20260810T074500
+                    docs/pitfalls/implementation-pitfalls.md.backup-20260810T074500
+
+Content preservation (pre-change lines vs. written file):
+                    .gitignore                 — no lines dropped
+                    CLAUDE.md                  — no lines dropped
+                    implementation-pitfalls.md — no lines dropped
+                    docs/git-strategy.md       — created, not applicable
 ```
+
+Every edited file gets a line here, including the clean ones — the empty
+result is the thing being reported. A non-empty result means lines were
+dropped and restored (say which), or, for a `git-strategy.md` the user
+chose to overwrite, a count plus the backup path.
 
 The `(retained §Release branch ...)` annotation appears only when two-branch gitflow was detected and the user did not opt out. For single-branch projects (GitHub flow / trunk-based) the section is silently removed and no annotation is needed — that's the standard fill-out.
 
@@ -337,6 +377,8 @@ Mention any follow-ups:
 
 - **Deleting the Branching model section AFTER find-replace instead of before.** The section contains both `main` and `dev` as concrete branch names in the descriptive patterns. A naive `main → dev` replace on that section produces `integration branch is dev; dev is release-only` — broken. ALWAYS delete the pre-adoption sections FIRST, then do the branch-name substitution.
 - **Writing over existing `git-strategy.md` without the pre-flight search.** There can be ghost copies at `git-strategy.md` and `docs/git-strategy.md` from different team members or past runs. Always search both tracked and untracked before writing.
+- **Trusting "append only" instead of verifying it.** Steps 5, 6, and 6.5 are all described as additive, and that's the intent — but the mechanic is read-file, modify, write-file-back, and an insertion placed mid-file (a reference line before the next `##`, §Orchestration before `# Appendix A`) rewrites everything around it. A run that dropped three lines from CLAUDE.md still ends with the reference line present, `.gitignore` correct, and §Orchestration in place — every check passes. Step 6.6 is the only check pointed at the input. Since these edits are additive, its pass condition is strictly empty: a non-empty result is a bug to fix, never something to justify.
+- **Deleting the backups as cleanup at the end of the run.** They are the gate's input, not clutter. Once a backup is gone the pre-change content is unrecoverable, and the gate silently has nothing to compare against. Keep them until the Step 7 report carries the result, and leave them for the user after that — this skill never deletes them.
 - **Assuming the branching pattern.** If both `main` and `dev` exist, DO NOT guess. Ask the user which is the integration branch — two-branch gitflow looks different from a GitHub-flow repo that happens to have a stale `dev` branch.
 - **Updating only one of CLAUDE.md / AGENTS.md when both exist.** Both should be updated if found. Different agent frameworks read different files; projects that have both need both wired up.
 - **Using Claude-Code-specific tooling.** This skill is cross-platform. Do not invoke `TodoWrite`, `AskUserQuestion`, `Skill`, or any other Claude-Code-specific tool in your implementation. Use plain shell commands, file operations, and natural-language prompts to the user.
@@ -354,11 +396,12 @@ Mention any follow-ups:
 | 1 | Verify git repo; search for existing `git-strategy.md`; prompt if found |
 | 2 | Auto-detect branch (incl. `master`), forge, paths, CLAUDE.md/AGENTS.md presence |
 | 3 | Present detected values (incl. release branch when two-branch detected); ask user to confirm/adjust |
-| 4 | Read template; delete pre-adoption sections; **remove §Release branch (+ its Contents entry) when NOT two-branch gitflow**; substitute integration branch; substitute worktree path; substitute `[RELEASE_BRANCH]` (no-op when section was removed); forge swaps; write |
+| 4 | Read template; delete pre-adoption sections; **remove §Release branch (+ its Contents entry) when NOT two-branch gitflow**; substitute integration branch; substitute worktree path; substitute `[RELEASE_BRANCH]` (no-op when section was removed); forge swaps; **back up every existing file this run will touch**; write |
 | 5 | Append worktree path to `.gitignore` if not already there |
 | 6 | Append reference to CLAUDE.md and/or AGENTS.md; create section if needed |
 | 6.5 | If `implementation-pitfalls.md` exists without §Orchestration, offer to append the trigger-and-pointer; otherwise note the gap in Step 7 report |
-| 7 | Report paths changed (note §Release branch retention/substitution when applicable) and next steps |
+| 6.6 | **Content-preservation gate** — for each file edited, compute the non-blank lines present before and absent after. These edits are additive, so the result must be empty; anything else is a dropped line to restore. A declared `git-strategy.md` overwrite reports a count instead. Before the report, before any backup cleanup |
+| 7 | Report paths changed (note §Release branch retention/substitution when applicable), retained backup paths, the **content-preservation result per edited file**, and next steps |
 
 ## Relationship to other skills
 

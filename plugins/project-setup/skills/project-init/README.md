@@ -9,7 +9,7 @@ One-command bootstrap for a new project's foundational docs and conventions. Wra
 Given a new project directory and a user request like *"initialize this project"*:
 
 1. Announces the sequence (claude-agents-md-init → git-strategy-init → pitfalls-docs-init) and confirms the user wants the full run (or identifies any skips).
-2. Runs `claude-agents-md-init` — installs `CLAUDE.md` and/or `AGENTS.md` at the project root from a single 4.7-tuned template (RFC 2119 terminology, universal ruleset, placeholder blocks for project-specific sections; per-target substitutions for the intro line and sibling references). Default writes both files; `--target claude|agents` narrows scope. Runs first so later skills have well-formed target files to append their references into.
+2. Runs `claude-agents-md-init` — installs `CLAUDE.md` and/or `AGENTS.md` at the project root from a single model-tuned template (RFC 2119 terminology, universal ruleset, placeholder blocks for project-specific sections; per-target substitutions for the intro line and sibling references). Default writes both files; `--target claude|agents` narrows scope. Runs first so later skills have well-formed target files to append their references into.
 3. Runs `git-strategy-init` — installs `docs/git-strategy.md`, updates `.gitignore`, wires references into CLAUDE.md / AGENTS.md.
 4. Runs `pitfalls-docs-init` — installs `docs/pitfalls/implementation-pitfalls.md` + `docs/pitfalls/testing-pitfalls.md` from templates (maintenance framework + universal cross-cutting entries pre-populated).
 5. Produces an aggregated report: what got installed, what cross-references got wired, what the user should do next.

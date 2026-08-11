@@ -235,4 +235,26 @@ if (Test-Path -LiteralPath $pluginsDir) {
     Write-Warn "$pluginsDir does not exist"
 }
 
+# --- git hooks ---
+#
+# Point git at the repo's tracked hooks directory so the pre-commit plugin version check runs.
+# core.hooksPath lives in .git/config, which linked worktrees share, so this covers worktrees too.
+# See docs/releasing.md for what the check enforces.
+
+$currentHooksPath = ""
+try { $currentHooksPath = (git -C $RepoRoot config --get core.hooksPath 2>$null) } catch { $currentHooksPath = "" }
+if ($null -eq $currentHooksPath) { $currentHooksPath = "" }
+$currentHooksPath = $currentHooksPath.Trim()
+
+if ($currentHooksPath -eq ".githooks") {
+    Write-Log "skip: core.hooksPath already .githooks"
+} elseif ($currentHooksPath -ne "") {
+    Write-Warn "core.hooksPath is set to '$currentHooksPath', not .githooks - leaving it alone; set it yourself to enable the plugin version check"
+} elseif ($DryRun) {
+    Write-Log "[dry-run] would set core.hooksPath -> .githooks"
+} else {
+    git -C $RepoRoot config core.hooksPath .githooks
+    Write-Log "configured: core.hooksPath -> .githooks (pre-commit plugin version check)"
+}
+
 Write-Log "done"

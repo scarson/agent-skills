@@ -233,6 +233,16 @@ If a build-unit lands outside its band, that's a prompt to look for a seam (spli
 or a sibling to merge — not a hard rule. The band is the *check*; the build-unit
 is the *sizer*.
 
+**These bands are not context-window limits — do not raise them when the window
+grows.** They size how much code one lane can *reason about coherently* while
+holding its lens, the cost map, and the currency brief in play. A larger window
+lets a slice be read; it does not make a lane's attention over 3× the code as
+sharp, and a lane that skims is a lane that reports the obvious and misses the
+seam. The same reasoning is why the economy of a batched cold sweep is *fewer
+lanes per run*, not *unbounded LOC per run*. The one place window size genuinely
+moves the line is the cycle-vs-snapshot call in [`SKILL.md`](SKILL.md) §Scope
+validation, where the question really is "can one pass hold this at all."
+
 **Note:** "~100k LOC → ~10–20 units" is a **Rust/TS datapoint** *[case]* — count
 **features/services, not lines**. Don't port that unit-count to a denser or more
 verbose ecosystem without re-deriving it from the band above.

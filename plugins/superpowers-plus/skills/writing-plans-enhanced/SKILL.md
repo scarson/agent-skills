@@ -10,7 +10,9 @@ that prevent subagent failures during execution.
 
 ## Terminology
 
+<!-- approved-block: rfc2119-terminology v1 — authoritative copy: ../../approved-blocks.md -->
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+<!-- /approved-block: rfc2119-terminology -->
 
 ## Step 1: Invoke the base skill
 
@@ -70,22 +72,26 @@ Every task MUST include:
 BEFORE starting work:
 1. Invoke /superpowers:test-driven-development
 2. Read docs/pitfalls/testing-pitfalls.md
-Follow TDD: write failing test → implement → verify green.
+Follow TDD: write failing test → implement → verify green. Cover the
+error paths and edge cases as you write the tests — that is part of
+writing them, not a separate audit afterwards.
 ```
 
 Every task MUST include:
 ```
 BEFORE marking this task complete:
 1. Review tests against docs/pitfalls/testing-pitfalls.md
-2. Verify test coverage (error paths? edge cases?)
-3. Run tests and confirm green
+2. Run tests and confirm green
 ```
 
 Every logical group of tasks MUST include:
 ```
 After completing this group:
-Review the batch from multiple perspectives. Minimum 3 review rounds.
-If round 3 still finds issues, keep going until clean.
+Review the batch once, from a perspective the individual tasks did not
+apply. Run further rounds only while the previous round produced
+material findings; stop when one produces none. A round run to reach a
+count, after findings have stopped, manufactures them — and a
+manufactured finding is the same defect as a suppressed one.
 ```
 
 ### Preserve assertion rigor under pressure
@@ -133,7 +139,9 @@ After writing the plan, invoke `/plan-review-cycle` before committing.
 
 Every plan produced by this skill MUST include a **Living Document Contract** block immediately after the Goal / Architecture / Tech Stack header. The contract binds every future executor to keep the plan synchronized with implementation state as work progresses — not only at completion.
 
-### Why (social proof)
+### Why (pattern observation, not a measured study)
+
+The observations below are recurring patterns from multi-agent coordination work, not a controlled comparison. They are stated as what has been seen to happen, and should be read at that strength.
 
 Plans that go stale during execution impose a compounding cost on every future agent that re-enters the work. Reconstructing state from scattered PR notes, commit messages, and coord-log entries takes meaningful time per deferred or modified phase; updating the plan at ship time is much cheaper. The asymmetry favors writing at ship time and compounds across every downstream dispatch that consumes the plan.
 
@@ -141,9 +149,19 @@ Observed across multi-agent coordination cycles: when a plan executor writes per
 
 Prose description + artifact link is the resilient coordination pattern. Exact-string coordination across agents is not: paraphrases break it, scope edits on the unblocker's side break it, and it creates brittle action-at-a-distance semantics that require three separate agents (the deferrer, the unblocker, the follow-up dispatcher) to agree on a string they never negotiate.
 
+### Repo assumptions
+
+<!-- approved-block: repo-tier-degradation v1 — authoritative copy: ../../approved-blocks.md -->
+**Repo probe, three tiers, no invented anchors.** Before any step that commits, records a commit SHA, or hands one to another skill, probe: is the artifact inside a git work tree, and may the runner commit (project rules, hooks)? Never block on the answer — degrade and disclose. **Tier 1, work tree and committing allowed:** the full protocol, SHAs recorded and handed on as written. **Tier 2, work tree but committing unavailable** (project rules forbid agent commits, hooks fail, unusual repo state): stage rather than commit — or, where staging is itself unavailable or the project's convention prefers it, leave the artifact in place and say so — surface once rather than forcing, and use the artifact's current bytes wherever a commit SHA would have been the anchor. **Tier 3, no work tree at all** (research, operations, or docs work outside any repo): copy the artifact's bytes to a session scratch file before proceeding — that copy is the baseline anything downstream would otherwise have taken from a commit — and disclose that no durable audit trail exists, reporting the scratch path so the user can keep it. In the degraded tiers the missing field is dropped with a one-line note saying why, and MUST NOT be filled with a plausible-looking value: a requirement that cannot be met honestly is a prompt to invent, and an invented SHA is worse than an absent one because it reads as an anchor while resolving to nothing.
+<!-- /approved-block: repo-tier-degradation -->
+
+For plans that means: the contract's git-shaped fields — ship SHAs, merge SHAs, branch names, PR numbers — are recorded wherever the project has them, and where it has none the banner records what the project does offer (a dated revision, a build identifier, a release tag) or states plainly that no durable ref exists. The stale-claim signals (§Living Document Contract, Step 5) degrade the same way — where there is no PR list and no branch history to read, the claim line names the coordination surface the project actually uses, or says none exists and the claim cannot be verified from the artifacts alone.
+
 ### What the contract binds
 
-Paste the following block verbatim into every plan, immediately after the Goal / Architecture / Tech Stack header. Do NOT paraphrase. Future executors rely on the exact phrasing to locate the contract. The MUST / SHOULD / MAY keywords in the block are interpreted per BCP 14 (RFC 2119 + RFC 8174) — capitalized only when normative.
+Paste the following block into every plan, immediately after the Goal / Architecture / Tech Stack header. The MUST / SHOULD / MAY keywords in the block are interpreted per BCP 14 (RFC 2119 + RFC 8174) — capitalized only when normative.
+
+**What is actually load-bearing** — and therefore what MUST NOT change: the `## Living Document Contract` heading (that anchor is how a future executor finds the contract), the banner vocabulary (🚧 / ✅ / ⏸ / ⬜ paired with IN PROGRESS / SHIPPED / DEFERRED / NOT STARTED), and the obligations themselves. Paste the body verbatim by default — hand-adapted copies shed clauses, and the ones they shed are the deferral condition and the deviation record. If a project's conventions genuinely require different phrasing, the obligations and the anchor survive; the prose may flex. This is deliberately not exact-string coordination in the sense §On phase defer forbids: a stable heading in a file you already have open is durable, whereas a gate key three agents must independently agree on is not.
 
 ```markdown
 ## Living Document Contract
@@ -151,7 +169,20 @@ Paste the following block verbatim into every plan, immediately after the Goal /
 This plan is a living document. Every executing agent MUST update it as
 execution progresses, not only at completion.
 
-- **On phase claim:** the executor MUST flip the banner to 🚧 IN PROGRESS
+Where this project has no git repository, every reference below to a SHA,
+a branch, or a PR means the nearest durable equivalent the project does
+offer (a dated revision, a build identifier, a release tag), and where
+none exists the banner states that plainly. An invented SHA is worse than
+an absent one: it reads as an anchor and sends the next agent looking for
+a commit that never existed.
+
+- **On phase claim:** before flipping your own banner, the executor MUST
+  check the preceding phase's banner against git reality — a ✅ SHIPPED
+  banner's recorded SHA reachable on the default branch, a 🚧 banner live
+  per the stale-claim signals below. If a banner does not match reality,
+  correct it first. A plan's accuracy is checked by the next agent to
+  arrive, not by the one who left it; this is the only read-back the
+  contract has. Then flip your own banner to 🚧 IN PROGRESS
   with a claim timestamp (ISO 8601 UTC) and the active branch name. The
   banner MUST NOT include an expected-completion estimate — agents cannot
   reliably estimate their own wall-clock, and a fabricated duration
@@ -161,8 +192,11 @@ execution progresses, not only at completion.
   See Step 5's stale-claim reclaim protocol.
 - **On phase ship:** the executor MUST update that phase's **Execution
   Status** banner with the shipped commit SHA(s) and date. If a PR is
-  open, the PR number and URL MUST appear in the top-of-plan Execution
-  Status table.
+  open, the PR number and URL MUST appear in the Execution Status table.
+  Recorded SHAs stay resolvable because this project merges with
+  `--merge` and preserves per-commit history; under a squash-merge
+  workflow, record the squashed commit that landed on the default branch
+  instead, or the banner points at a SHA no reader can find.
 - **On phase defer:** the executor MUST update the banner with ⏸ status
   AND a prose description of the unblock condition + a link to the
   likely-unblocker artifact (plan page, task, or PR whose own Execution
@@ -170,17 +204,25 @@ execution progresses, not only at completion.
   paraphrases and scope edits; exact-string coordination between agents
   is not.
 - **On PR merge:** the executor MUST record the merge SHA in the banner
-  + the top-of-plan Execution Status table.
+  + the Execution Status table.
 - **On deviation from the written plan** (scope edits, structural
   refactors, dropped tasks, reordered phases): the executor MUST
   inline-document the deviation in the affected task AND summarize it
-  in the top-of-plan Execution Status as a "Deviations" subsection.
+  in the Execution Status section's "Deviations" subsection.
   Deviation state MUST NOT live only in PR notes or status reports.
 - **On discovery** (pre-existing drift surfaced during execution, new
-  bugs found, architectural issues noted): the executor MUST add a
-  "Discoveries" subsection at the top of the plan with pointers to the
-  files/lines affected. Follow-up dispatches read this subsection to
-  avoid duplicate discovery work.
+  bugs found, architectural issues noted): the executor MUST record it
+  in the Execution Status section's "Discoveries" subsection with
+  pointers to the files/lines affected. Follow-up dispatches read this
+  subsection to avoid duplicate discovery work.
+
+**Layout invariant.** The status table is the first content under
+`## Execution Status`. Deviations and Discoveries are subsections
+*below* it and MUST NOT be placed above it — the table is what a reader
+needs in the first screen, and it stops being that the moment a growing
+narrative sits on top of it. Entries in both subsections are a one-line
+summary plus a pointer to where the detail lives (the affected task, the
+file:line); they are not the place to tell the story.
 
 The plan SHOULD reflect reality at the end of every session that touches
 it. Anything worth putting in a status report to the user is worth
@@ -227,10 +269,12 @@ completion]. Follow-up dispatch verifies by reading the linked
 artifact's banner, not by grepping for strings.
 ```
 
-Plans SHOULD include a top-of-plan **Execution Status** summary table once at least one phase has shipped or deferred:
+Plans MUST carry the **Execution Status** section from the moment the plan is written — table and both subsections scaffolded, every phase ⬜, not deferred until something ships. Creating it lazily is what puts it in the wrong place: if a discovery lands before any phase ships, the Discoveries subsection gets written first and the table arrives underneath it, permanently inverted. Scaffolding it empty costs six lines and removes the ordering decision from the executor entirely — the same reason per-phase banners are initialized to ⬜ rather than added on first use.
 
 ```markdown
 ## Execution Status
+<!-- The status table stays directly below this heading. New content goes in the
+     Deviations / Discoveries subsections below it — never above the table. -->
 
 **Overall:** N/M phases shipped, K deferred pending upstream gates.
 
@@ -248,6 +292,8 @@ Plans SHOULD include a top-of-plan **Execution Status** summary table once at le
 ### Discoveries
 - [Surfaced file/pattern + status: shipped fix / deferred / flagged only]
 ```
+
+At plan-creation time that section is written with every phase ⬜ and both subsections present but empty — `- _None yet._` under each. The placeholder is doing work: a bare empty heading reads as unused and invites a later agent to reorganize around it, while a line that looks live invites appending to it.
 
 ### Why banners over bottom-of-plan tables alone
 
@@ -305,8 +351,8 @@ The follower SHOULD assume any uncommitted work from the prior agent is lost. Re
 
 When producing the initial plan:
 
-1. Paste the Living Document Contract block (above) verbatim after the base skill's `**Tech Stack:**` header.
-2. Add an `## Execution Status` section with `**Overall:** Not started.` and a table with all phases marked `⬜ Not started`.
+1. Paste the Living Document Contract block (above) after the base skill's `**Tech Stack:**` header, preserving its heading, banner vocabulary, and obligations.
+2. Add an `## Execution Status` section with the layout comment, `**Overall:** Not started.`, a table with all phases marked `⬜ Not started`, and empty `### Deviations` / `### Discoveries` subsections below the table (`- _None yet._` under each).
 3. Add an **Execution Status** banner at the top of every `## Phase N` section, initialized to `⬜ NOT STARTED`.
 4. Include a brief "why this matters" sentence pointing at this skill's Step 5 so future executors know where the discipline comes from.
 
