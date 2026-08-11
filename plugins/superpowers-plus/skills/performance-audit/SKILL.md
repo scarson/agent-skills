@@ -1,7 +1,6 @@
 ---
 name: performance-audit
 description: Run a critical, multi-dimensional performance review with parallel agents across algorithmic complexity, memory/allocation, data access & I/O, concurrency, framework-idiom currency, payload/startup, and an execution-cost map. Use as a performance snapshot, before scaling or optimization work, or when investigating slowness, latency, throughput, or resource usage.
-argument-hint: "[optional: specific area/path to focus on, or 'full']"
 ---
 
 # Performance Audit

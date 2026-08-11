@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// ABOUTME: Bumps a plugin's version in both .claude-plugin and .codex-plugin manifests plus the
-// marketplace catalog version, in one operation, so the copies cannot drift apart. Every place the
-// version appears is written here; see docs/releasing.md for when to run it and which digit to move.
+// ABOUTME: Bumps a plugin's version in all three manifests — the Agent Plugins root plugin.json,
+// .claude-plugin, and .codex-plugin — plus the marketplace catalog version, in one operation, so the
+// copies cannot drift apart. Every place the version appears is written here; see docs/releasing.md
+// for when to run it and which digit to move.
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
@@ -9,7 +10,10 @@ import { join } from 'node:path'
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/
 const DIGITS = ['major', 'minor', 'patch']
-const MANIFEST_DIRS = ['.claude-plugin', '.codex-plugin']
+// Plugin-relative paths of every manifest carrying a version. The bare `plugin.json` is the Agent
+// Plugins spec location (§5.1: clients MUST check for a manifest at plugin.json in the plugin root);
+// the two dotted ones are where Claude Code and Codex look today.
+const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
 const CATALOG = '.claude-plugin/marketplace.json'
 
 function die (message) {
@@ -89,20 +93,20 @@ function readJsonAtHead (path) {
   }
 }
 
-// --- Validate both manifests before writing anything -----------------------------------------------
+// --- Validate every manifest before writing anything -----------------------------------------------
 
-const manifestPaths = MANIFEST_DIRS.map(dir => `plugins/${plugin}/${dir}/plugin.json`)
+const manifestPaths = MANIFEST_FILES.map(file => `plugins/${plugin}/${file}`)
 const manifests = manifestPaths.map(readJson)
 const currentVersions = manifests.map((json, i) => {
   if (typeof json.version !== 'string') die(`${manifestPaths[i]}: no version string`)
   return json.version
 })
 
-if (currentVersions[0] !== currentVersions[1]) {
+if (new Set(currentVersions).size > 1) {
   die(
-    `${plugin}: manifest versions already disagree — ` +
-    `${MANIFEST_DIRS[0]} is ${currentVersions[0]}, ${MANIFEST_DIRS[1]} is ${currentVersions[1]}.\n` +
-    'Reconcile them by hand first; bumping now would silently pick one and discard the other.'
+    `${plugin}: manifest versions already disagree —\n` +
+    currentVersions.map((version, i) => `    ${MANIFEST_FILES[i]} is ${version}`).join('\n') + '\n' +
+    'Reconcile them by hand first; bumping now would silently pick one and discard the rest.'
   )
 }
 

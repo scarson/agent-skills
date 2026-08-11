@@ -14,6 +14,10 @@ import { fileURLToPath } from 'node:url'
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const checker = join(repoRoot, 'scripts', 'check-plugin-versions.mjs')
 
+// Plugin-relative manifest paths, mirroring the checker's own list. The bare `plugin.json` is the
+// Agent Plugins spec location; the two dotted ones are the Claude Code and Codex locations.
+const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
+
 function git (cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 }
@@ -36,8 +40,8 @@ function makeFixture (plugins) {
 
   const names = Object.keys(plugins)
   for (const [name, version] of Object.entries(plugins)) {
-    for (const manifestDir of ['.claude-plugin', '.codex-plugin']) {
-      writeJson(join(dir, 'plugins', name, manifestDir, 'plugin.json'), { name, version })
+    for (const manifest of MANIFEST_FILES) {
+      writeJson(join(dir, 'plugins', name, manifest), { name, version })
     }
     mkdirSync(join(dir, 'plugins', name, 'skills', 'demo'), { recursive: true })
     writeFileSync(join(dir, 'plugins', name, 'skills', 'demo', 'SKILL.md'), 'original\n')
@@ -68,16 +72,15 @@ function check (dir, ...args) {
   }
 }
 
-function setVersion (dir, plugin, manifestDir, version) {
-  const path = join(dir, 'plugins', plugin, manifestDir, 'plugin.json')
+function setVersion (dir, plugin, manifest, version) {
+  const path = join(dir, 'plugins', plugin, manifest)
   const json = JSON.parse(readFileSync(path, 'utf8'))
   json.version = version
   writeJson(path, json)
 }
 
-function bumpBothManifests (dir, plugin, version) {
-  setVersion(dir, plugin, '.claude-plugin', version)
-  setVersion(dir, plugin, '.codex-plugin', version)
+function bumpEveryManifest (dir, plugin, version) {
+  for (const manifest of MANIFEST_FILES) setVersion(dir, plugin, manifest, version)
 }
 
 function touchSkill (dir, plugin, text = 'changed\n') {
@@ -130,7 +133,7 @@ test('failure output includes a runnable bump command', () => {
 test('changed plugin with a version bump passes', () => {
   const dir = fixture({ alpha: '0.1.0' })
   touchSkill(dir, 'alpha')
-  bumpBothManifests(dir, 'alpha', '0.2.0')
+  bumpEveryManifest(dir, 'alpha','0.2.0')
   git(dir, 'add', '-A')
   const { code, output } = check(dir, '--staged')
   assert.equal(code, 0, output)
@@ -138,7 +141,7 @@ test('changed plugin with a version bump passes', () => {
 
 test('manifests carrying different versions fail even with no content change', () => {
   const dir = fixture({ alpha: '0.1.0' })
-  setVersion(dir, 'alpha', '.codex-plugin', '0.9.0')
+  setVersion(dir, 'alpha', '.codex-plugin/plugin.json', '0.9.0')
   git(dir, 'add', '-A')
   const { code, output } = check(dir, '--staged')
   assert.equal(code, 1)
@@ -147,10 +150,31 @@ test('manifests carrying different versions fail even with no content change', (
   assert.match(output, /0\.9\.0/)
 })
 
+test('a root manifest left behind by a bump fails', () => {
+  const dir = fixture({ alpha: '0.1.0' })
+  setVersion(dir, 'alpha', '.claude-plugin/plugin.json', '0.2.0')
+  setVersion(dir, 'alpha', '.codex-plugin/plugin.json', '0.2.0')
+  git(dir, 'add', '-A')
+  const { code, output } = check(dir, '--staged')
+  assert.equal(code, 1)
+  assert.match(output, /plugin\.json/)
+  assert.match(output, /0\.1\.0/)
+})
+
+test('a missing root manifest fails and names the path', () => {
+  const dir = fixture({ alpha: '0.1.0' })
+  rmSync(join(dir, 'plugins', 'alpha', 'plugin.json'))
+  git(dir, 'add', '-A')
+  const { code, output } = check(dir, '--staged')
+  assert.equal(code, 1)
+  assert.match(output, /plugins\/alpha\/plugin\.json/)
+  assert.match(output, /missing/)
+})
+
 test('bumping only one manifest fails despite the content change being bumped', () => {
   const dir = fixture({ alpha: '0.1.0' })
   touchSkill(dir, 'alpha')
-  setVersion(dir, 'alpha', '.claude-plugin', '0.2.0')
+  setVersion(dir, 'alpha', '.claude-plugin/plugin.json', '0.2.0')
   git(dir, 'add', '-A')
   const { code } = check(dir, '--staged')
   assert.equal(code, 1)
@@ -181,7 +205,7 @@ test('plugin missing from the claude marketplace file fails', () => {
 
 test('version that is not three dot-separated integers fails', () => {
   const dir = fixture({ alpha: '0.1.0' })
-  bumpBothManifests(dir, 'alpha', '0.2')
+  bumpEveryManifest(dir, 'alpha','0.2')
   git(dir, 'add', '-A')
   const { code, output } = check(dir, '--staged')
   assert.equal(code, 1)
@@ -190,7 +214,7 @@ test('version that is not three dot-separated integers fails', () => {
 
 test('manifest that is not valid JSON fails without throwing', () => {
   const dir = fixture({ alpha: '0.1.0' })
-  writeFileSync(join(dir, 'plugins', 'alpha', '.codex-plugin', 'plugin.json'), '{ not json\n')
+  writeFileSync(join(dir, 'plugins', 'alpha', '.codex-plugin/plugin.json'), '{ not json\n')
   git(dir, 'add', '-A')
   const { code, output } = check(dir, '--staged')
   assert.equal(code, 1)
@@ -199,8 +223,8 @@ test('manifest that is not valid JSON fails without throwing', () => {
 
 test('newly added plugin needs no bump', () => {
   const dir = fixture({ alpha: '0.1.0' })
-  for (const manifestDir of ['.claude-plugin', '.codex-plugin']) {
-    writeJson(join(dir, 'plugins', 'gamma', manifestDir, 'plugin.json'), { name: 'gamma', version: '0.1.0' })
+  for (const manifest of MANIFEST_FILES) {
+    writeJson(join(dir, 'plugins', 'gamma', manifest), { name: 'gamma', version: '0.1.0' })
   }
   mkdirSync(join(dir, 'plugins', 'gamma', 'skills', 'demo'), { recursive: true })
   writeFileSync(join(dir, 'plugins', 'gamma', 'skills', 'demo', 'SKILL.md'), 'new\n')

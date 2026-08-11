@@ -29,21 +29,29 @@ FIXTURES = _SKILL_ROOT / "tests" / "fixtures"
 
 
 def _ensure_extraction_deps_or_reexec() -> None:
-    """If trafilatura + pyyaml are not importable, re-exec through uv or a cached venv.
+    """If the extraction deps are not importable, re-exec through uv or a cached venv.
 
     Mirrors bootstrap.py's tiered cascade so the test runner respects the same
     "uv if available, otherwise stdlib venv" precedence as production use.
     PyYAML is a test-only dep not registered in bootstrap.REQUIRED, so we add
     it on top of the standard set.
-    """
-    try:
-        import trafilatura  # noqa: F401
-        import yaml  # noqa: F401
-        return
-    except ImportError:
-        pass
 
+    The probe covers the whole of bootstrap.REQUIRED rather than a hand-picked
+    subset. Spot-checking trafilatura alone let a partial install through: on an
+    interpreter carrying trafilatura and PyYAML but no beautifulsoup4, this
+    returned early, the cascade never ran, and every bs4-dependent test errored
+    with ModuleNotFoundError rather than being bootstrapped. Deferring to
+    bootstrap._deps_importable() also picks up its pip-name-to-import-name map,
+    which is what makes beautifulsoup4/bs4 resolve correctly.
+    """
     import bootstrap  # same cascade logic; imported from scripts/ on sys.path
+
+    if bootstrap._deps_importable():
+        try:
+            import yaml  # noqa: F401
+            return
+        except ImportError:
+            pass
 
     # Tier 2 (mirrors bootstrap.py): if uv is on PATH, re-exec under uv. This
     # side-steps the cached-venv path entirely, which is fragile on Microsoft
@@ -138,8 +146,23 @@ def split_frontmatter(markdown: str) -> tuple[dict[str, str], str]:
     for line in fm_raw.split("\n"):
         m = re.match(r"([A-Za-z_][\w-]*)\s*:\s*(.*)$", line)
         if m:
-            fm[m.group(1)] = m.group(2).strip()
+            fm[m.group(1)] = _unquote_scalar(m.group(2).strip())
     return fm, body
+
+
+def _unquote_scalar(value: str) -> str:
+    """Strip the surrounding quotes off a YAML scalar, if it has a matched pair.
+
+    These assertions read values this reader produced, so they must not depend on
+    whether the writer chose to quote. Trafilatura quotes what YAML would otherwise
+    auto-type -- a bare `date: 2024-11-19` becomes a date object, so newer versions
+    emit `date: "2024-11-19"` -- and without this the date assertions compared
+    against a leading quote character and failed on a library upgrade rather than on
+    anything about the extraction.
+    """
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        return value[1:-1]
+    return value
 
 
 def extract(fixture: str, url: str) -> tuple[str, dict[str, str], str]:
@@ -1109,6 +1132,88 @@ def test_content_hash_excludes_frontmatter() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Bootstrap cascade
+# ---------------------------------------------------------------------------
+
+def test_import_names_maps_pip_names_that_differ() -> None:
+    """Import statements must use import names, pip calls must use pip names.
+
+    `import beautifulsoup4` raises ModuleNotFoundError unconditionally, so a call
+    site that builds an import statement out of REQUIRED can never succeed -- and
+    fails silently, as a check that always reports "deps missing".
+    """
+    import bootstrap
+
+    names = bootstrap._import_names()
+    assert "bs4" in names, f"beautifulsoup4 must map to bs4, got {names!r}"
+    assert "beautifulsoup4" not in names, \
+        f"pip name leaked into the import names: {names!r}"
+    assert len(names) == len(bootstrap.REQUIRED), \
+        f"every REQUIRED entry needs an import name, got {names!r}"
+
+
+def test_pip_facing_call_sites_still_use_pip_names() -> None:
+    """The mapping must not leak the other way: pip cannot install 'bs4'."""
+    import bootstrap
+
+    assert "beautifulsoup4" in bootstrap.REQUIRED, \
+        "REQUIRED is what is handed to pip and `uv --with`; it must hold pip names"
+
+
+def test_sentinel_is_current_accepts_a_matching_payload() -> None:
+    import tempfile
+    import bootstrap
+
+    with tempfile.TemporaryDirectory() as directory:
+        sentinel = Path(directory) / ".deps-ok"
+        sentinel.write_text(bootstrap._sentinel_payload(), encoding="utf-8")
+        assert bootstrap._sentinel_is_current(sentinel)
+
+
+def test_sentinel_is_current_rejects_a_stale_dep_set() -> None:
+    """A venv built before a dep was added must not keep taking the fast path.
+
+    The fast path skips the import check entirely, so an unverified stale venv
+    surfaces as an ImportError from the main script rather than a rebuild here.
+    """
+    import tempfile
+    import bootstrap
+
+    with tempfile.TemporaryDirectory() as directory:
+        sentinel = Path(directory) / ".deps-ok"
+        stale = bootstrap._sentinel_payload().replace(
+            f"deps={','.join(bootstrap.REQUIRED)}", "deps=trafilatura"
+        )
+        sentinel.write_text(stale, encoding="utf-8")
+        assert not bootstrap._sentinel_is_current(sentinel)
+
+
+def test_sentinel_is_current_rejects_a_missing_file() -> None:
+    import tempfile
+    import bootstrap
+
+    with tempfile.TemporaryDirectory() as directory:
+        assert not bootstrap._sentinel_is_current(Path(directory) / ".deps-ok")
+
+
+def test_uv_is_preferred_over_the_pip_venv() -> None:
+    """pip is only ever reached when uv is absent.
+
+    Pins the tier ordering: main() consults shutil.which("uv") and returns through
+    _exec_uv before any venv/pip code runs. If that inverted, machines with uv would
+    silently start paying for venv creation.
+    """
+    import inspect
+    import bootstrap
+
+    source = inspect.getsource(bootstrap.main)
+    uv_branch = source.index('shutil.which("uv")')
+    venv_tier = source.index("_cache_venv_root()")
+    assert uv_branch < venv_tier, \
+        "the uv tier must be attempted before the pip-backed venv tier"
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
@@ -1190,6 +1295,13 @@ def main() -> int:
         test_content_hash_sha256_is_deterministic_for_same_body,
         test_content_hash_sha256_differs_for_different_bodies,
         test_content_hash_excludes_frontmatter,
+        # Bootstrap cascade — import-name mapping, sentinel staleness, tier order
+        test_import_names_maps_pip_names_that_differ,
+        test_pip_facing_call_sites_still_use_pip_names,
+        test_sentinel_is_current_accepts_a_matching_payload,
+        test_sentinel_is_current_rejects_a_stale_dep_set,
+        test_sentinel_is_current_rejects_a_missing_file,
+        test_uv_is_preferred_over_the_pip_venv,
     ]
 
     passed = 0

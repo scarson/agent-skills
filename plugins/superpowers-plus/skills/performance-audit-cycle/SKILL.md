@@ -1,7 +1,6 @@
 ---
 name: performance-audit-cycle
 description: Full performance audit cycle — dispatch the sibling performance-audit skill (parallel perf lanes + execution-cost map), cross-validate findings against real code and hot-path reachability, present decisions, and write a fix plan via writing-plans-enhanced with a measurement/verification gate. Use before scaling work, when chasing latency/throughput/resource regressions, or for an audit-and-fix loop rather than just a snapshot.
-argument-hint: "<scope, e.g. 'the request pipeline', 'PR 45', 'src/render/'>"
 ---
 
 # Performance Audit Cycle

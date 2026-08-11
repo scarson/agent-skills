@@ -1,7 +1,6 @@
 ---
 name: bug-hunt-cycle
 description: Full bug hunt cycle — dispatch 4 sibling bug-hunter methodology skills in parallel, cross-validate findings, present design decisions, and write a fix plan via writing-plans-enhanced. Use when finishing a phase or auditing a body of work.
-argument-hint: "<scope, e.g. 'Phase 9', 'PR 45', 'internal/feed/'>"
 ---
 
 # Bug Hunt Cycle

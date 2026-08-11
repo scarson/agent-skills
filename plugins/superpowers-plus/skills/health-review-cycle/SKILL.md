@@ -1,7 +1,6 @@
 ---
 name: health-review-cycle
 description: Full health review cycle — dispatch the sibling project-health-review skill (5-axis adversarial review), cross-validate findings, present design decisions, and write a fix plan via writing-plans-enhanced. Use periodically as a health check or before major milestones.
-argument-hint: "[optional: specific area to focus on, or 'full' for all dimensions]"
 ---
 
 # Health Review Cycle

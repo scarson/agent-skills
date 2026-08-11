@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// ABOUTME: Verifies that every plugin changed in a diff range had its version bumped, that the
-// .claude-plugin and .codex-plugin manifests agree, and that the plugin sets in both marketplace
+// ABOUTME: Verifies that every plugin changed in a diff range had its version bumped, that the root,
+// .claude-plugin, and .codex-plugin manifests all agree, and that the plugin sets in both marketplace
 // files match the plugins/ directories. Run by .githooks/pre-commit; see docs/releasing.md.
 
 import { execFileSync } from 'node:child_process'
@@ -8,7 +8,15 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const SEMVER = /^\d+\.\d+\.\d+$/
-const MANIFEST_DIRS = ['.claude-plugin', '.codex-plugin']
+// Plugin-relative paths of every manifest carrying a version. The bare `plugin.json` is the Agent
+// Plugins spec location (§5.1: clients MUST check for a manifest at plugin.json in the plugin root);
+// the two dotted ones are where Claude Code and Codex look today.
+const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
+// The manifest whose version at the base ref answers "did this plugin get bumped?". It must be one
+// that has existed for the whole history being checked: a manifest introduced partway through reads
+// as absent at older base refs, which the bump requirement treats as a brand-new plugin and exempts.
+// The root plugin.json arrived later than .claude-plugin, so .claude-plugin stays the reference.
+const BUMP_REFERENCE = '.claude-plugin/plugin.json'
 const CLAUDE_MARKETPLACE = '.claude-plugin/marketplace.json'
 const AGENTS_MARKETPLACE = '.agents/plugins/marketplace.json'
 
@@ -87,8 +95,8 @@ function parseJson (text, path) {
   }
 }
 
-function manifestPath (plugin, manifestDir) {
-  return `plugins/${plugin}/${manifestDir}/plugin.json`
+function manifestPath (plugin, manifest) {
+  return `plugins/${plugin}/${manifest}`
 }
 
 /** Plugin names present in the tree being validated. */
@@ -97,7 +105,10 @@ function listPlugins () {
     const tracked = git('ls-files', '--cached', '--', 'plugins/').split('\n')
     const names = new Set()
     for (const path of tracked) {
-      const match = /^plugins\/([^/]+)\/\.claude-plugin\/plugin\.json$/.exec(path.trim())
+      // Any of the three manifest locations identifies a plugin, so deleting one location still
+      // leaves the plugin discoverable — and its now-missing manifest reportable — rather than
+      // making the whole plugin silently drop out of the check.
+      const match = /^plugins\/([^/]+)\/(?:\.claude-plugin\/|\.codex-plugin\/)?plugin\.json$/.exec(path.trim())
       if (match) names.add(match[1])
     }
     return [...names].sort()
@@ -134,8 +145,8 @@ for (const plugin of plugins) {
   const versions = {}
   let readable = true
 
-  for (const manifestDir of MANIFEST_DIRS) {
-    const path = manifestPath(plugin, manifestDir)
+  for (const manifest of MANIFEST_FILES) {
+    const path = manifestPath(plugin, manifest)
     const text = readTarget(path)
     if (text === null) {
       fail(`${path}: missing`)
@@ -157,30 +168,30 @@ for (const plugin of plugins) {
       readable = false
       continue
     }
-    versions[manifestDir] = json.version
+    versions[manifest] = json.version
   }
 
   if (!readable) continue
 
-  if (versions['.claude-plugin'] !== versions['.codex-plugin']) {
+  if (new Set(Object.values(versions)).size > 1) {
     fail(
-      `${plugin}: manifest versions disagree — ` +
-      `.claude-plugin is ${versions['.claude-plugin']}, .codex-plugin is ${versions['.codex-plugin']}. ` +
-      'Both must carry the same version.'
+      `${plugin}: manifest versions disagree —\n` +
+      MANIFEST_FILES.map(manifest => `      ${manifest} is ${versions[manifest]}`).join('\n') +
+      '\n    All must carry the same version.'
     )
     continue
   }
 
   if (!changed.has(plugin)) continue
 
-  const baseJson = parseJson(readBase(manifestPath(plugin, '.claude-plugin')), 'base manifest')
+  const baseJson = parseJson(readBase(manifestPath(plugin, BUMP_REFERENCE)), 'base manifest')
   // No manifest at the base ref means the plugin is new in this range; its version is an initial
   // value rather than a bump, so there is nothing to require.
   if (baseJson === null) continue
 
-  if (baseJson.version === versions['.claude-plugin']) {
+  if (baseJson.version === versions[BUMP_REFERENCE]) {
     fail(
-      `${plugin}: files changed but version is still ${versions['.claude-plugin']}. ` +
+      `${plugin}: files changed but version is still ${versions[BUMP_REFERENCE]}. ` +
       'An unbumped change is an undelivered change — Claude Code keys the install path off this version.\n' +
       `    Fix: node scripts/bump-plugin-version.mjs ${plugin} minor` +
       '   (use patch instead for wording, typo, or docs-only edits)'
