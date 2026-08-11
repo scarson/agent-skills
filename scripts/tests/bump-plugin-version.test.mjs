@@ -1,5 +1,5 @@
 // ABOUTME: Tests for scripts/bump-plugin-version.mjs. Covers digit arithmetic, refusal to write
-// when the two manifests already disagree, the catalog version being recomputed from HEAD rather
+// when the manifests already disagree, the catalog version being recomputed from HEAD rather
 // than advanced in place, and that a bump touches only the version line of each file.
 
 import { test } from 'node:test'
@@ -13,6 +13,10 @@ import { fileURLToPath } from 'node:url'
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const bumper = join(repoRoot, 'scripts', 'bump-plugin-version.mjs')
 const checker = join(repoRoot, 'scripts', 'check-plugin-versions.mjs')
+
+// Plugin-relative manifest paths, mirroring the bumper's own list. The bare `plugin.json` is the
+// Agent Plugins spec location; the two dotted ones are the Claude Code and Codex locations.
+const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
 
 function git (cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
@@ -32,8 +36,8 @@ function makeFixture (plugins, catalogVersion = '1.0.0') {
 
   const names = Object.keys(plugins)
   for (const [name, version] of Object.entries(plugins)) {
-    for (const manifestDir of ['.claude-plugin', '.codex-plugin']) {
-      writeJson(join(dir, 'plugins', name, manifestDir, 'plugin.json'), {
+    for (const manifest of MANIFEST_FILES) {
+      writeJson(join(dir, 'plugins', name, manifest), {
         name,
         version,
         description: 'fixture plugin',
@@ -68,8 +72,8 @@ function bump (dir, ...args) {
   }
 }
 
-function versionOf (dir, plugin, manifestDir) {
-  const path = join(dir, 'plugins', plugin, manifestDir, 'plugin.json')
+function versionOf (dir, plugin, manifest) {
+  const path = join(dir, 'plugins', plugin, manifest)
   return JSON.parse(readFileSync(path, 'utf8')).version
 }
 
@@ -89,24 +93,25 @@ test.after(() => {
   for (const dir of fixtures) rmSync(dir, { recursive: true, force: true })
 })
 
-test('patch bump advances the last digit in both manifests', () => {
+test('patch bump advances the last digit in every manifest', () => {
   const dir = fixture({ alpha: '0.4.0' })
   const { code, output } = bump(dir, 'alpha', 'patch')
   assert.equal(code, 0, output)
-  assert.equal(versionOf(dir, 'alpha', '.claude-plugin'), '0.4.1')
-  assert.equal(versionOf(dir, 'alpha', '.codex-plugin'), '0.4.1')
+  for (const manifest of MANIFEST_FILES) {
+    assert.equal(versionOf(dir, 'alpha', manifest), '0.4.1', manifest)
+  }
 })
 
 test('minor bump zeroes the patch digit', () => {
   const dir = fixture({ alpha: '0.4.7' })
   bump(dir, 'alpha', 'minor')
-  assert.equal(versionOf(dir, 'alpha', '.claude-plugin'), '0.5.0')
+  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '0.5.0')
 })
 
 test('major bump zeroes minor and patch', () => {
   const dir = fixture({ alpha: '0.4.7' })
   bump(dir, 'alpha', 'major')
-  assert.equal(versionOf(dir, 'alpha', '.claude-plugin'), '1.0.0')
+  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '1.0.0')
 })
 
 test('catalog version moves the same digit as the plugin', () => {
@@ -120,8 +125,8 @@ test('two patch bumps in one release move the catalog once', () => {
   bump(dir, 'alpha', 'patch')
   bump(dir, 'beta', 'patch')
   assert.equal(catalogVersion(dir), '0.7.1')
-  assert.equal(versionOf(dir, 'alpha', '.claude-plugin'), '0.4.1')
-  assert.equal(versionOf(dir, 'beta', '.claude-plugin'), '0.1.1')
+  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '0.4.1')
+  assert.equal(versionOf(dir, 'beta', '.claude-plugin/plugin.json'), '0.1.1')
 })
 
 test('a patch bump followed by a minor bump leaves the catalog one minor ahead of HEAD', () => {
@@ -145,9 +150,9 @@ test('bump order does not change the catalog result', () => {
   assert.equal(catalogVersion(first), '0.8.0')
 })
 
-test('refuses to write when the two manifests already disagree', () => {
+test('refuses to write when the manifests already disagree', () => {
   const dir = fixture({ alpha: '0.4.0' })
-  const path = join(dir, 'plugins', 'alpha', '.codex-plugin', 'plugin.json')
+  const path = join(dir, 'plugins', 'alpha', '.codex-plugin/plugin.json')
   const json = JSON.parse(readFileSync(path, 'utf8'))
   json.version = '0.9.0'
   writeJson(path, json)
@@ -155,8 +160,22 @@ test('refuses to write when the two manifests already disagree', () => {
   const { code, output } = bump(dir, 'alpha', 'patch')
   assert.equal(code, 1)
   assert.match(output, /disagree|mismatch/i)
-  assert.equal(versionOf(dir, 'alpha', '.claude-plugin'), '0.4.0', 'must not have written')
-  assert.equal(versionOf(dir, 'alpha', '.codex-plugin'), '0.9.0', 'must not have written')
+  assert.equal(versionOf(dir, 'alpha', 'plugin.json'), '0.4.0', 'must not have written')
+  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '0.4.0', 'must not have written')
+  assert.equal(versionOf(dir, 'alpha', '.codex-plugin/plugin.json'), '0.9.0', 'must not have written')
+})
+
+test('refuses to write when the root manifest is the one out of step', () => {
+  const dir = fixture({ alpha: '0.4.0' })
+  const path = join(dir, 'plugins', 'alpha', 'plugin.json')
+  const json = JSON.parse(readFileSync(path, 'utf8'))
+  json.version = '0.9.0'
+  writeJson(path, json)
+
+  const { code, output } = bump(dir, 'alpha', 'patch')
+  assert.equal(code, 1)
+  assert.match(output, /disagree|mismatch/i)
+  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '0.4.0', 'must not have written')
 })
 
 test('unknown plugin fails without writing', () => {
@@ -171,7 +190,7 @@ test('invalid digit argument fails without writing', () => {
   const dir = fixture({ alpha: '0.4.0' })
   const { code } = bump(dir, 'alpha', 'sideways')
   assert.notEqual(code, 0)
-  assert.equal(versionOf(dir, 'alpha', '.claude-plugin'), '0.4.0')
+  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '0.4.0')
 })
 
 test('missing arguments fail', () => {
@@ -184,7 +203,7 @@ test('a bump changes only the version line of each file', () => {
   const dir = fixture({ alpha: '0.4.0' }, '0.7.0')
   bump(dir, 'alpha', 'minor')
   const numstat = git(dir, 'diff', '--numstat').trim().split('\n')
-  assert.equal(numstat.length, 3, `expected 3 changed files, got:\n${numstat.join('\n')}`)
+  assert.equal(numstat.length, 4, `expected 4 changed files, got:\n${numstat.join('\n')}`)
   for (const line of numstat) {
     const [added, removed] = line.split('\t')
     assert.equal(added, '1', `${line}: formatting was not preserved`)

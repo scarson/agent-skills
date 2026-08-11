@@ -55,12 +55,43 @@ _HERE = Path(__file__).resolve().parent
 MAIN_SCRIPT = _HERE / "url_to_markdown.py"
 
 
+def _import_names() -> tuple[str, ...]:
+    """REQUIRED as Python import names, mapped where they differ from the pip name.
+
+    Anything that *imports* a dep must go through here; anything that hands a name to
+    pip or to `uv --with` wants REQUIRED verbatim. Mixing them up is silent: an
+    `import beautifulsoup4` never raises at definition time, it just always fails.
+    """
+    return tuple(_PIP_TO_IMPORT_NAME.get(name, name) for name in REQUIRED)
+
+
 def _deps_importable() -> bool:
     """True if all required packages can be found by the current interpreter."""
     return all(
-        importlib.util.find_spec(_PIP_TO_IMPORT_NAME.get(name, name)) is not None
-        for name in REQUIRED
+        importlib.util.find_spec(name) is not None for name in _import_names()
     )
+
+
+def _sentinel_payload() -> str:
+    """The sentinel's expected contents for the current REQUIRED set and interpreter."""
+    return (
+        f"deps={','.join(REQUIRED)}\n"
+        f"python={sys.version_info.major}.{sys.version_info.minor}\n"
+    )
+
+
+def _sentinel_is_current(sentinel: Path) -> bool:
+    """True if the sentinel was written for this exact dep set and Python version.
+
+    Existence alone is not enough. The sentinel skips the per-run import check, so a
+    venv built before a dep was added to REQUIRED would keep taking the fast path and
+    fail at runtime on the missing import. Comparing the recorded payload makes a
+    stale venv fall through to verification, which rebuilds it.
+    """
+    try:
+        return sentinel.read_text(encoding="utf-8") == _sentinel_payload()
+    except OSError:
+        return False
 
 
 def _cache_venv_root() -> Path:
@@ -115,11 +146,7 @@ def _create_venv_and_install(venv_dir: Path) -> Path:
     # Checked by main() to skip the per-run import verification subprocess.
     sentinel = venv_dir / ".deps-ok"
     try:
-        sentinel.write_text(
-            f"deps={','.join(REQUIRED)}\n"
-            f"python={sys.version_info.major}.{sys.version_info.minor}\n",
-            encoding="utf-8",
-        )
+        sentinel.write_text(_sentinel_payload(), encoding="utf-8")
     except OSError:
         pass  # best-effort; not a blocker
 
@@ -185,28 +212,24 @@ def main() -> int:
     sentinel = venv_dir / ".deps-ok"
 
     if vpy.exists():
-        if sentinel.exists():
-            # Fast path: sentinel says deps were installed successfully on a
-            # prior run. Skip the per-invocation import verification subprocess
+        if _sentinel_is_current(sentinel):
+            # Fast path: sentinel says this exact dep set was installed successfully
+            # on a prior run. Skip the per-invocation import verification subprocess
             # and exec the main script directly. Saves ~100-300ms on each run
             # which agent hot-loops pay every time.
             return _exec_subprocess(vpy, forwarded)
 
-        # Fallback: venv exists but sentinel is missing (could be a partial
-        # install from an interrupted prior run, or a venv from before the
-        # sentinel was introduced). Verify by actually importing the deps;
+        # Fallback: the sentinel is missing or stale — a partial install from an
+        # interrupted prior run, a venv from before the sentinel was introduced, or
+        # one built against an older REQUIRED. Verify by actually importing the deps;
         # on success, write the sentinel so the next run hits the fast path.
         check = subprocess.run(
-            [str(vpy), "-c", "import " + ", ".join(REQUIRED)],
+            [str(vpy), "-c", "import " + ", ".join(_import_names())],
             capture_output=True,
         )
         if check.returncode == 0:
             try:
-                sentinel.write_text(
-                    f"deps={','.join(REQUIRED)}\n"
-                    f"python={sys.version_info.major}.{sys.version_info.minor}\n",
-                    encoding="utf-8",
-                )
+                sentinel.write_text(_sentinel_payload(), encoding="utf-8")
             except OSError:
                 pass  # sentinel write is best-effort; not a blocker
             return _exec_subprocess(vpy, forwarded)

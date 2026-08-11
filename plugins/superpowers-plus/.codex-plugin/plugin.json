@@ -1,6 +1,6 @@
 {
   "name": "superpowers-plus",
-  "version": "0.31.1",
+  "version": "0.32.0",
   "description": "Workflow orchestration wrapping superpowers — front-to-back feature-building, enhanced plan writing with the Living Document Contract, adversarial plan review, a wire-walk reachability gate, structured handoffs, a post-certification editorial pass, and the full bug-hunt, health-review, and performance-audit workflows (hunter methodologies + project health review + multi-lane performance review + cycle skills, all in one plugin)",
   "author": {
     "name": "Samuel Carson",

@@ -1,7 +1,8 @@
 {
-  "name": "utility",
-  "description": "General-purpose utility skills (url-to-markdown, etc.)",
-  "version": "0.3.3",
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "project-setup",
+  "description": "Skills for initializing and configuring new projects (git strategy, etc.)",
+  "version": "0.9.2",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"
@@ -11,7 +12,8 @@
   "license": "MIT",
   "keywords": [
     "skills",
-    "utilities",
-    "tools"
+    "setup",
+    "bootstrap",
+    "git"
   ]
 }

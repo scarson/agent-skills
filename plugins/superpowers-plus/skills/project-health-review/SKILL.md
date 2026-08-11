@@ -1,7 +1,6 @@
 ---
 name: project-health-review
 description: Run a critical, multi-dimensional quality review of the project using parallel adversarial agents. Each agent focuses on one dimension and reports only problems. Use periodically as a health check or before major milestones.
-argument-hint: "[optional: specific area to focus on, or 'full' for all dimensions]"
 ---
 
 # Project Health Review
