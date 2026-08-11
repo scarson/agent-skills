@@ -7,13 +7,15 @@ description: Use when building features, fixing bugs, or executing project to-do
 
 ## Terminology
 
+<!-- approved-block: rfc2119-terminology v1 — authoritative copy: ../../approved-blocks.md -->
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+<!-- /approved-block: rfc2119-terminology -->
 
 ## Overview
 
 End-to-end workflow for turning a feature request, bug fix, or project to-do into a subagent-ready implementation plan. Chains brainstorming, adversarial design review, and disciplined planning to prevent the most common subagent failure modes: ambiguity, context gaps, and interpretation drift.
 
-This skill owns the **upstream** half of the workflow: deciding *what* to build and stress-testing the design. The downstream half — turning the design into a subagent-proof plan, reviewing it adversarially, and recommending an execution strategy — is delegated to [`writing-plans-enhanced`](../writing-plans-enhanced/SKILL.md), which in turn delegates plan review to [`plan-review-cycle`](../plan-review-cycle/SKILL.md). The runner MUST NOT re-implement that downstream discipline here — see §What this skill does NOT do (and why) for the reasoning.
+This skill owns the **workflow spine**: brainstorming the design, then delegating each downstream discipline to its owner skill. Design review is delegated to the sibling [`design-review-cycle`](../design-review-cycle/SKILL.md); plan writing to [`writing-plans-enhanced`](../writing-plans-enhanced/SKILL.md), which in turn delegates plan review to [`plan-review-cycle`](../plan-review-cycle/SKILL.md). The runner MUST NOT re-implement any delegated discipline here — see §What this skill does NOT do (and why) for the reasoning.
 
 ## When to Use
 
@@ -35,8 +37,8 @@ This skill owns the **upstream** half of the workflow: deciding *what* to build 
 digraph build_robust {
   rankdir=TB;
   "Request received" [shape=doublecircle];
-  "Brainstorm" [shape=box, label="1. Invoke superpowers:brainstorming"];
-  "Adversarial" [shape=box, label="2. 5-round adversarial design review\n(cross-provider for at least one round —\n e.g., Claude ↔ OpenAI/Codex)"];
+  "Brainstorm" [shape=box, label="1. Invoke brainstorming-enhanced (sibling) — stop at committed spec"];
+  "Adversarial" [shape=box, label="2. Invoke design-review-cycle (sibling)\n(pilot → independent review → user gate →\n two-leg closure; cross-model on named surfaces)"];
   "Plan" [shape=box, label="3. Invoke writing-plans-enhanced (sibling)\n(handles plan + plan review + execution\n recommendation + Living Document Contract)"];
   "Execute" [shape=doublecircle, label="Execute plan"];
 
@@ -44,29 +46,21 @@ digraph build_robust {
   "Brainstorm" -> "Adversarial";
   "Adversarial" -> "Plan";
   "Plan" -> "Execute";
+  "Adversarial" -> "Brainstorm" [label="abort: wrong problem"];
 }
 ```
 
 ### Step 1: Brainstorm
 
-The runner MUST invoke the `superpowers:brainstorming` skill for the requested work. The output is a shared understanding of the user's intent, the requirements, and the design space — not yet a plan.
+The runner MUST invoke the sibling `brainstorming-enhanced` skill for the requested work, instructing it: **stop at the committed spec — this workflow owns design review and planning.** If the wrapper reports failed-precondition, stop and surface the message; do not fall back to invoking the base skill directly. If it reports stopped-with-open-questions, stop and surface the questions — they need the user, and design review on an incomplete spec wastes the review. If it reports anything other than spec-committed, stop and surface it. The output is a shared understanding of the user's intent, the requirements, and the design space — not yet a plan.
 
 ### Step 2: Adversarial Design Review
 
-The runner MUST run a **5-round adversarial agent review of the design** that came out of brainstorming. The review challenges assumptions, finds gaps, and stress-tests the design **before any plan is written**. Each round SHOULD pick a different lens — e.g., "what fails under load", "what fails on partial input", "what fails when a dependency changes its contract", "what's the simplest version that still satisfies the requirements", "what would a malicious user do" — so the rounds are non-redundant.
+The runner MUST invoke the sibling [`design-review-cycle`](../design-review-cycle/SKILL.md) skill on the design that came out of brainstorming, and MUST NOT re-implement design review inline. The cycle owns the full discipline: a runner pilot, independent review at mode width (light default; full fan-out REQUIRED on named surfaces), a findings ledger with a batched user decision gate, a conditional re-sweep, and a two-leg closure (cold reader + ledger verifier, both clean). It is also the **canonical home of the cross-provider dispatch-and-fallback procedure** that previously lived in this step — see its §Cross-provider policy.
 
-**At least one round MUST use the leading model from a different provider** than the one running this skill — typically the pairing is **Claude ↔ OpenAI/Codex**, but any two leading models from distinct providers qualify. Models from the same provider share training-data biases and blind spots, so an all-same-provider review collapses into a single perspective talking to itself, which defeats the entire point of adversarial review. Cross-provider review is the *primary* mechanism that makes this step worth doing — it is REQUIRED, not a nice-to-have.
+Handle its three terminal states: **completed** → proceed to Step 3. **Abort to brainstorming** (the gate concluded the design solves the wrong problem) → return to Step 1. **Stopped awaiting user** → do not proceed; the review's ledger holds the posed questions. (A Phase 0 readiness-gate stop — the artifact is not yet a reviewable design — is handled like abort: return to Step 1 and finish the design.)
 
-**How to dispatch cross-provider.** The mechanism depends on the runner's environment. In Claude Code, common primitives include: a sibling skill that wraps an external CLI (e.g., a `codex` skill that shells out to OpenAI's Codex CLI, or an equivalent for other providers), the Codex CLI invoked directly via Bash, or — when no native primitive exists — asking the user to copy the design into another provider's interface and paste the review back. The runner MUST use whatever cross-provider primitive the environment offers. If no such primitive exists and the user can't be reached for instructions, the same-provider fallback below applies.
-
-**Same-provider fallback (use sparingly).** If — and only if — another provider's model is completely unavailable AND the user is unable to provide instructions for accessing one, the runner MAY dispatch a subagent from the same provider as the runner for the cross-provider round. In that case:
-
-- The subagent MUST use the most capable available model at the highest reasoning effort the provider offers ("x-high", "high", or the equivalent — e.g., the latest Claude Opus at extended thinking, or GPT-5 / o-series at the highest reasoning effort).
-- The runner MUST surface a one-line note to the user explaining that the cross-provider round was skipped, why, and which same-provider model + effort level was used in its place.
-
-This is a degraded mode, not the default: a same-provider review at maximum effort still has correlated blind spots that a cross-provider review wouldn't.
-
-This step is the unique value of `build-robust-features` over jumping straight to `writing-plans-enhanced`. Skipping it pushes design failures into the plan, where they cost more to find and fix. Skipping the cross-provider round specifically pushes a *single provider's blind spots* into the plan — even worse, because they look like consensus.
+This step is the unique value of `build-robust-features` over jumping straight to `writing-plans-enhanced`. Skipping it pushes design failures into the plan, where they cost more to find and fix.
 
 ### Step 3: Write the Plan
 
@@ -78,18 +72,19 @@ The previous version of this skill restated the subagent-proofing requirements (
 
 - The discipline can evolve without two skills drifting out of sync.
 - Users who skip brainstorming and call `writing-plans-enhanced` directly still get the same subagent-proofing.
-- This skill stays focused on its real contribution: brainstorm + adversarial design review.
+- This skill stays focused on its real contribution: brainstorming + orchestrating the delegated disciplines.
 
-Future maintainers: subagent-proofing rules belong in `writing-plans-enhanced`, not here. This skill's body SHOULD remain focused on brainstorming and adversarial design review; if you find yourself wanting to add subagent-proofing requirements, add them to `writing-plans-enhanced` instead so they apply to every entry path (this skill, direct invocations, `bug-hunt-cycle` Phase 6, `health-review-cycle` Phase 4).
+Future maintainers: subagent-proofing rules belong in `writing-plans-enhanced`, and design-review rules belong in `design-review-cycle` — not here. This skill's body SHOULD remain a thin spine (brainstorm + delegation + terminal-state handling); if you find yourself wanting to add review or proofing requirements here, add them to the owning sibling instead so they apply to every entry path (this skill, direct invocations, `bug-hunt-cycle` Phase 6, `health-review-cycle` Phase 4).
 
 ## Common Mistakes
 
+- **Invoking `superpowers:brainstorming` directly** — bypasses requirements pinning, the spec-location convention, and plain-text questioning. Use the sibling `brainstorming-enhanced` skill.
 - **Skipping the brainstorm** because "the user already explained what they want" — brainstorming surfaces requirements the user didn't think to articulate.
 - **Skipping adversarial review** because "the brainstorm was thorough" — review catches a different class of problems (failure modes, hidden assumptions, contract drift).
-- **Running all 5 adversarial review rounds against the same provider** — provider independence is the load-bearing primitive here. Same-provider models share training-data biases, so 5 rounds against your own provider collapses into one perspective talking to itself. The cross-provider round (Step 2) is REQUIRED, not optional — and the same-provider fallback only applies when another provider is genuinely unreachable AND the user can't help bridge to one.
+- **Skipping the cross-model round on a named surface** — `design-review-cycle` requires it whenever an automated cross-provider primitive is available. Same-provider models share training-data biases exactly where they matter most (concurrency, data integrity, crash recovery, security). The graceful same-provider fallback exists for users without a second provider — it is a disclosed degradation, not the path of least resistance.
 - **Calling `superpowers:writing-plans` directly** — bypasses subagent-proofing, the Living Document Contract, and the plan-review cycle. Use the sibling `writing-plans-enhanced` skill.
 - **Re-implementing plan review here** — `writing-plans-enhanced` already runs `plan-review-cycle` at its Step 4. Adding another inline review cycle here is duplication that drifts out of sync.
-- **Treating the adversarial review as design *iteration* rather than design *audit*** — the review surfaces issues; you decide which to fold back into the design before invoking `writing-plans-enhanced`. Don't merge them into a single endless loop.
+- **Bolting extra ad-hoc review loops onto `design-review-cycle`'s output** — the cycle already folds fixes into the design and terminates on a clean two-leg closure. Its terminal state is binding: completed → Step 3; abort → Step 1. Improvised additional rounds after a clean closure are the manufacture failure its success definition names.
 
 ## Final gate — wire-walk (reachability)
 
@@ -97,4 +92,4 @@ Future maintainers: subagent-proofing rules belong in `writing-plans-enhanced`, 
 
 `wire-walk` has the operator define the key user flows **greenfield** — the runner MUST NOT draft them, because anchoring launders the runner's own blind spots — then traces each flow verbatim to code (`file:line`), from its real starting state (fresh install / first launch / empty store / post-upgrade), hunting the universal break-patterns. **Any broken operator flow means the feature is NOT shipped** — that broken wiring is the real remaining work, not a follow-up. The runner MUST NOT claim done while one stands.
 
-Like the downstream planning discipline, this gate is **delegated, not re-implemented here**: the brainstorm + adversarial design review above get the design right, `writing-plans-enhanced` gets the plan right, and the sibling `wire-walk` skill owns proving a human can actually reach the shipped code. See [`wire-walk`](../wire-walk/SKILL.md) for the full procedure.
+Like the downstream planning discipline, this gate is **delegated, not re-implemented here**: the brainstorm + `design-review-cycle` above get the design right, `writing-plans-enhanced` gets the plan right, and the sibling `wire-walk` skill owns proving a human can actually reach the shipped code. See [`wire-walk`](../wire-walk/SKILL.md) for the full procedure.

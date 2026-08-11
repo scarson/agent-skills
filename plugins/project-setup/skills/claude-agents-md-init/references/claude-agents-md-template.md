@@ -76,16 +76,13 @@ When AI makes completeness near-free, default to the complete option rather than
 
 A useful distinction: **boil lakes, flag oceans.** A "lake" is bounded scope where 100% coverage is reachable in this session (every edge case in a parser, every error path in a handler, every input shape for a validator). An "ocean" is unbounded scope (full rewrite, multi-quarter migration, every consumer of a deeply-shared utility). Lakes are boilable — do them. Oceans aren't — flag them, don't pretend.
 
+Boiling the lake means covering the scope you were given completely. It does not mean widening the scope. If the task as asked looks mistaken, or a better shape exists, say so in a sentence and deliver what was asked — don't quietly narrow, widen, or transform it.
+
 When presenting options to [USER NAME], prefer the complete option over the shortcut. When recommending, name what the shortcut would defer so the tradeoff is visible.
 
 ## Test Driven Development  (TDD)
 
-- FOR EVERY NEW FEATURE OR BUGFIX to production code, YOU MUST follow Test Driven Development (operationalized by the `superpowers:test-driven-development` skill):
-    1. Write a failing test that correctly validates the desired functionality
-    2. Run the test to confirm it fails as expected
-    3. Write ONLY enough code to make the failing test pass
-    4. Run the test to confirm success
-    5. Refactor if needed while keeping tests green
+- FOR EVERY NEW FEATURE OR BUGFIX to production code, YOU MUST follow Test Driven Development: failing test first, minimal code to green, then refactor. The `superpowers:test-driven-development` skill is the authoritative procedure — invoke it (or read and follow it) rather than reconstructing the cycle from memory.
 - **Scope.** "Feature or bugfix" means production code (typically under `src/`). TDD does NOT apply to: documentation (`docs/`, `*.md`), configuration (`*.json`, `*.yml`, `.editorconfig`), scripts, CI (`.github/`), or spike/prototype code.
   <!-- TODO: Adjust the scope to this project's layout. Exclude generated-code
   directories (Kiota, protobuf, OpenAPI/GraphQL codegen, etc.) explicitly. -->
@@ -104,56 +101,36 @@ When presenting options to [USER NAME], prefer the complete option over the shor
 
 ## Naming
 
-  - Names MUST tell what code does, not how it's implemented or its history
-  - When changing code, never document the old behavior or the behavior change
-  - You MUST NOT use implementation details in names (e.g., "ZodValidator", "MCPWrapper", "JSONParser")
-  - You MUST NOT use temporal/historical context in names (e.g., "NewAPI", "LegacyHandler", "UnifiedTool", "ImprovedInterface", "EnhancedParser")
-  - You MUST NOT use pattern names unless they add clarity (e.g., prefer "Tool" over "ToolFactory")
-
-  Good names tell a story about the domain:
-  - `Tool` not `AbstractToolInterface`
-  - `RemoteTool` not `MCPToolWrapper`
-  - `Registry` not `ToolRegistryManager`
-  - `execute()` not `executeToolWithValidation()`
+  - Names MUST tell what code does, not how it's implemented or its history: no implementation details ("ZodValidator", "MCPWrapper"), no temporal or change context ("NewAPI", "LegacyHandler", "EnhancedParser"), no pattern names that add no clarity (prefer "Tool" over "ToolFactory").
+  - When changing code, never encode the old behavior or the behavior change in a name.
 
 ## Code Comments
 
- - You MUST NOT add comments explaining that something is "improved", "better", "new", "enhanced", or referencing what it used to be
- - You MUST NOT add instructional comments telling developers what to do ("copy this pattern", "use this instead")
- - Comments should explain WHAT the code does or WHY it exists, not how it's better than something else
- - If you're refactoring, remove old comments - don't add new ones explaining the refactoring
+ - Comments explain WHAT the code does or WHY it exists, and MUST be evergreen — describing the code as it is now, with no temporal or change-tracking context ("improved", "new", "recently refactored", "moved"), no references to what used to be there, and no instructional asides to future developers ("copy this pattern"). Match the surrounding code's comment density and idiom.
  - YOU MUST NOT remove code comments unless you can PROVE they are actively false. Comments are important documentation and must be preserved.
- - YOU MUST NOT add comments about what used to be there or how something has changed.
- - YOU MUST NOT refer to temporal context in comments (like "recently refactored" "moved") or code. Comments should be evergreen and describe the code as it is. If you name something "new" or "enhanced" or "improved", you've probably made a mistake and MUST STOP and ask me what to do.
  - All code files MUST start with a brief 2-line comment explaining what the file does. Each line MUST start with "ABOUTME: " to make them easily greppable.
    - Precedence: in an existing codebase whose files lack ABOUTME headers, add them to files you create, but don't retrofit them onto files you're merely editing — the smallest-reasonable-change rule in §Writing code wins.
  - **Exception for generated code:** The rules in this section — comment preservation, ABOUTME headers, prohibitions on temporal/change-tracking comments — do NOT apply to auto-generated code.
    <!-- TODO: Name the generated-code directories + the regen command. Delete
    this bullet if the project has no codegen. -->
 
-  Examples:
-  <!-- TODO: 3 BAD examples + 1 GOOD example using this project's actual stack.
-  BAD should use real anti-patterns from PRs; GOOD should name a well-chosen
-  identifier or WHAT-the-code-does comment. -->
+## Self-identifying references
 
-  If you catch yourself writing "new", "old", "legacy", "wrapper", "unified", or implementation details in names or comments, STOP and find a better name that describes the thing's actual purpose.
-
-## Cross-references in persistent artifacts
-
-Cross-references between persistent documents are valuable — they're the basis of progressive discovery and core to how agents and humans navigate context across a large body of work. The rule is neither "no cross-references" nor "inline every link's content." It's two principles working together:
+The default is to write the meaning in place. A reference is the exception, earned only by a target that is stable and authoritative — and references to such targets are valuable: they're the basis of progressive discovery and core to how agents and humans navigate context across a large body of work. The rule is neither "no references" nor "inline every link's content." It's two principles working together:
 
 **1. Every reference MUST be self-identifying.** Without chasing the link, the reader should be able to (i) recognize what the reference points at and (ii) decide whether following it matters for their current task. They don't need to be able to *act on the content* without chasing — for an authoritative spec or guideline, the correct answer is often "yes, you do need to go read the canonical source." What they DO need is enough inline orientation to assess relevance before deciding to chase.
 
 **2. Do NOT duplicate authoritative content inline.** When a link points at a stable, authoritative artifact (spec, ADR, security guideline, decision log), the link IS the right way to convey the content. Duplicating creates staleness risk and version skew as copies drift, and agents reading subtly-different copies have no reliable way to tell which version is right. The inline part is orientation; the linked artifact stays the single source of truth.
 
-Two failure modes this rule guards against:
+Three failure modes this rule guards against:
 
-**(a) Opaque session identifiers that leak.** Working-session shorthand like `Option C`, `Decision F1`, `Recommendation A`, `Approach B`, `Followup #4` MUST NOT appear in persistent artifacts. These have no anchor *anywhere* outside the conversation they originated in — there is no authoritative doc to defer to, just a missing legend. The fix is to replace the shorthand with the plain-English meaning it stood for, *with no link* (there's nothing to link to):
+**(a) Opaque session identifiers that leak.** Working-session shorthand like `Option C`, `Decision F1`, `Recommendation A`, `Approach B`, `Followup #4` MUST NOT appear in persistent artifacts. These have no anchor *anywhere* outside the conversation they originated in — there is no authoritative doc to defer to, just a missing legend. The same applies *within* a document: positional pointers (`above`, `the earlier rule`) and bare numeric references (`hook (8)`, `see (3)`) whose legend lives far from the use site are session shorthand in slow motion — the "session" is just the linear read the author imagined. The fix is to replace the shorthand with the plain-English meaning it stood for, *with no link* (there's nothing to link to):
 
 - `Option C` → `on-device Apple Foundation Models`
 - `Recommendation A + (i)` → `hard cascade with curated tier-3 cache`
 - `Followup #4` → `defer payload-versioning work until after MVP`
 - `// addresses D7` → `// addresses json schema mismatch between v1 and v2 payloads`
+- `per hook (8)` → `per the base-didn't-commit hook` (name internal rules; number only sequences read in order and never referenced from afar)
 
 **(b) Bare references to real artifacts.** Even when the link points at a stable, authoritative thing (an ADR, a spec, a doc section), if the reader can't tell what's behind it without chasing, the reference is broken. The fix is to add a brief inline descriptor *and keep the link* — orientation inline, content via the link:
 
@@ -161,9 +138,14 @@ Two failure modes this rule guards against:
 - `see security-guidelines.md` → `Mandatory security guidelines: refer to /docs/specs/security-guidelines.md` (reader knows it's security and can assess relevance; the spec is the single source of truth — do NOT inline its content)
 - `see §4.2` → `see §4.2 (validation order: schema → semantic → cross-field)` (parenthetical gives enough orientation to assess relevance; the section has the full procedure)
 
+**(c) References to things that don't exist yet.** A persistent artifact that points at something a later process will create — a ledger a review tool writes at its own setup, a doc a follow-up task will add — reads as dangling until that process runs, and a reader cannot tell a forward reference from a broken one. Keep the reference, and name the writer and the absent-until condition in place:
+
+- `see the review ledger pointer` → `the review ledger pointer (written by the reviewing skill at its setup; absent until a review has run)`
+- `tracked in the migration doc` → `tracked in docs/migrations/2026-q3-schema.md (created by the migration kickoff task; absent until it starts)`
+
 **The operational test.** Reading only the inline text (no link-chasing), can the reader (i) recognize what each reference points at and (ii) decide whether following it matters for their current task? If yes, the reference is doing its job. If no, add inline orientation — *just enough to identify and assess relevance*, not the full content of what's linked.
 
-**Scope:** this rule applies to ALL artifacts that leave the working session — design docs, specs, code, comments, commit messages, tickets, READMEs, ADRs. Conversational shorthand inside a live session is fine; the rule governs what gets written down to persist.
+**Scope:** this rule applies to ALL artifacts that leave the working session — design docs, specs, code, comments, commit messages, tickets, READMEs, ADRs — and to references within a document, not only between documents. Conversational shorthand inside a live session is fine; the rule governs what gets written down to persist.
 
 ## Version Control
 
@@ -183,7 +165,7 @@ Every commit message MUST follow [Conventional Commits](https://www.conventional
   <!-- TODO: Trim or extend this type list to the set this project actually uses, and enumerate any project-specific scopes (e.g. `feat(parser):`, `fix(api):`). -->
 - **Description** is imperative mood, lower-case, no trailing period: `fix(auth): reject tokens with skewed clocks`, not `Fixed the auth bug.`
 - **Breaking changes** carry a `!` before the colon (`feat(api)!: drop v1 envelope`) and/or a `BREAKING CHANGE:` footer.
-- The subject still obeys the §Cross-references rule above: self-identifying, no opaque session shorthand. `fix: address Option C` is forbidden — name the actual thing.
+- The subject still obeys the §Self-identifying references rule above: no opaque session shorthand. `fix: address Option C` is forbidden — name the actual thing.
 - **Interaction with the no-squash rule.** Conventional Commits is usually paired with squash-merge, where only the PR title needs to conform and messy intermediate commits get laundered away. This project does NOT squash (`gh pr merge --merge` only — see git-strategy §Mechanics). That is precisely why the discipline lands on every commit: there is no squash step to clean up after you.
 
 ### Keeping a clean git graph
@@ -240,34 +222,9 @@ Escalation is honest reporting, not failure. The format is: **REASON** (one or t
 
 ## Systematic Debugging Process
 
-YOU MUST ALWAYS find the root cause of any issue you are debugging
-YOU MUST NOT fix a symptom or add a workaround instead of finding a root cause, even if it is faster or I seem like I'm in a hurry.
-
-YOU MUST follow this debugging framework for any non-obvious issue — anything where the cause isn't confirmed the moment you read the error. Trivial failures (a typo named in the error message, a missing import) don't need the phases; fix them directly. If your "trivial" fix doesn't work on the first try, the issue wasn't trivial — enter the framework at Phase 1:
-
-### Phase 1: Root Cause Investigation (BEFORE attempting fixes)
-- **Read Error Messages Carefully**: Don't skip past errors or warnings - they often contain the exact solution
-- **Reproduce Consistently**: Ensure you can reliably reproduce the issue before investigating
-- **Check Recent Changes**: What changed that could have caused this? Git diff, recent commits, etc.
-
-### Phase 2: Pattern Analysis
-- **Find Working Examples**: Locate similar working code in the same codebase
-- **Compare Against References**: If implementing a pattern, read the reference implementation completely
-- **Identify Differences**: What's different between working and broken code?
-- **Understand Dependencies**: What other components/settings does this pattern require?
-
-### Phase 3: Hypothesis and Testing
-1. **Form Single Hypothesis**: What do you think is the root cause? State it clearly
-2. **Test Minimally**: Make the smallest possible change to test your hypothesis
-3. **Verify Before Continuing**: Did your test work? If not, form new hypothesis - don't add more fixes
-4. **When You Don't Know**: Say "I don't understand X" rather than pretending to know
-
-### Phase 4: Implementation Rules
-- You MUST have the simplest possible failing test case available. If there's no test framework, it's ok to write a one-off test script.
-- You MUST NOT add multiple fixes at once
-- You MUST NOT claim to implement a pattern without reading it completely first
-- You MUST test after each change
-- IF your first fix doesn't work, STOP and re-analyze rather than adding more fixes
+- YOU MUST ALWAYS find the root cause of any issue you are debugging. YOU MUST NOT fix a symptom or add a workaround instead of finding a root cause, even if it is faster or I seem like I'm in a hurry.
+- For any non-obvious issue — anything where the cause isn't confirmed the moment you read the error — follow the `superpowers:systematic-debugging` skill (phased root-cause investigation: reproduce, compare against working code, single hypothesis, minimal test). The skill is the authoritative procedure — invoke it (or read and follow it) rather than reconstructing the phases from memory.
+- Trivial failures (a typo named in the error message, a missing import) don't need the framework; fix them directly. If your "trivial" fix doesn't work on the first try, the issue wasn't trivial — STOP and enter the skill's framework rather than adding more fixes.
 
 ## Thinking documentation for methodology and brainstorming work
 
@@ -284,6 +241,8 @@ YOU MUST follow this debugging framework for any non-obvious issue — anything 
 3. **Keep dead ends and reconsidered alternatives visible.** "Considered and ruled out" sections with specific reasons — done more often and more candidly than typical doc-writing instinct. Don't sanitize the final doc into looking like the author never had doubts; the doubts and their resolutions are the methodology.
 
 4. **Treat reasoning as a first-class artifact, not a transient means to an end.** Context is cheap to capture while the reasoning is fresh and expensive or impossible to regenerate later. The asymmetry favors over-capturing.
+
+**Over-capture reasoning; don't pad structure.** The asymmetry above favors capturing the thinking — it does not favor filler sections, restated summaries, or boilerplate scaffolding around it. Match a document's length to its substance: a dead end worth recording earns its lines; a section that exists because the outline had a slot for it does not. This applies to every document you write to disk, not just methodology artifacts.
 
 **Concrete form this takes in a doc:**
 
@@ -307,10 +266,11 @@ Redundancy is the feature. Each layer has different durability and different acc
 
 ## Learning and Memory Management
 
-<!-- TODO: Name this project's memory/journal mechanism here (a memory directory,
-a dated docs/learnings/ file, an MCP journal, a gstack-learn-style command, …).
-The rules below say "memory/journal mechanism" generically — this is where it
-resolves. -->
+<!-- TODO: Name this project's memory/journal mechanism here. On Claude Code the
+built-in auto-memory is the default answer — name it plus any project-specific
+additions. On frameworks without built-in memory: a memory directory, a dated
+docs/learnings/ file, an MCP journal, … The rules below say "memory/journal
+mechanism" generically — this is where it resolves. -->
 
 - YOU MUST capture technical insights, failed approaches, and user preferences in the project's memory/journal mechanism as you work
 - Before starting complex tasks, search that store for relevant past experiences and lessons learned
@@ -409,11 +369,18 @@ Use these proactively — don't wait to be asked.
 
 | Skill | When to use |
 |-------|-------------|
+<!-- ROUTER: superpowers-plus — keep exactly ONE of these three blocks (see claude-agents-md-init Step 5 sub-step 3a); delete the other two blocks AND all six marker lines. -->
+| `superpowers-plus:brainstorming-enhanced` | Before any new feature or creative work |
+| `superpowers-plus:writing-plans-enhanced` | Before multi-step implementation when requirements exist |
+<!-- /ROUTER: superpowers-plus -->
+<!-- ROUTER: superpowers-base -->
 | `superpowers:brainstorming` | Before any new feature or creative work |
 | `superpowers:writing-plans` | Before multi-step implementation when requirements exist |
+<!-- /ROUTER: superpowers-base -->
+<!-- ROUTER: none — intentionally empty: neither plugin available, so both rows are omitted. -->
+<!-- /ROUTER: none -->
 | `superpowers:test-driven-development` | When implementing any feature or bugfix |
 | `superpowers:systematic-debugging` | When encountering any bug, test failure, or unexpected behavior |
-| `superpowers:verification-before-completion` | Before claiming work is done or creating commits/PRs |
 | `superpowers:requesting-code-review` | After completing a major feature or before merging |
 | `superpowers:receiving-code-review` | When receiving code review feedback, before implementing suggestions |
 | `superpowers:finishing-a-development-branch` | When implementation is complete and ready to integrate |
@@ -426,10 +393,12 @@ Use these proactively — don't wait to be asked.
 
 **When to dispatch parallel subagents on this project:**
 <!-- TODO: Project-specific triggers (bug hunts, per-platform work, independent
-plan phases, large doc rewrites by section). Current Claude models delegate
-conservatively by default — they under-reach for subagents unless told when
-delegation is wanted. State triggers as conditions ("when fanning out across
-N+ independent items, delegate"), not as general encouragement. -->
+plan phases, large doc rewrites by section). State when to delegate AND when not
+to — both as conditions ("when fanning out across N+ independent items,
+delegate"), never as general encouragement in either direction. Name the work
+that isn't worth an agent: anything finishable in a handful of tool calls, and
+double-checking your own output. Where one agent can do the job, one is the
+right number. -->
 
 **Project-specific skills:**
 
@@ -452,5 +421,6 @@ Key routing rules:
 - Code review, check my diff → invoke review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Writing implementation plans → invoke writing-plans-enhanced
+- Review a design doc before it becomes a plan → invoke design-review-cycle
 - Review a plan before committing → invoke plan-review-cycle
 -->

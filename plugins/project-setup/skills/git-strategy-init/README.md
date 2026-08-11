@@ -18,7 +18,10 @@ Given a git repo and a user request like *"set up the git strategy in this proje
 6. Writes the filled-out doc (default: `docs/git-strategy.md` if `docs/` exists; prompts otherwise).
 7. Appends the worktree path to `.gitignore` if not already ignored.
 8. Appends a reference to the new doc under an appropriate section in `CLAUDE.md` and `AGENTS.md` (whichever exist).
-9. Reports what was changed and suggests next steps.
+9. **Verifies nothing was lost.** Every existing file the run touches — `.gitignore`, `CLAUDE.md` / `AGENTS.md`, `implementation-pitfalls.md`, and an overwritten `git-strategy.md` — is backed up first, then compared line-for-line against that backup before the run is reported. Because all of this skill's edits are additive, the expected result is empty: any line present before and absent after is a dropped line to restore, not a judgment call. (The one exception is a `git-strategy.md` the user explicitly chose to overwrite, which reports a count instead.) Backups are left in place for the user.
+10. Reports what was changed, the retained backups, the content-preservation result per edited file, and suggests next steps.
+
+Step 9 exists because "append only" describes the intent, not the mechanic. These edits are read-file → modify → write-back, and an insertion placed mid-file (a reference line before the next `##` heading, §Orchestration before `# Appendix A`) rewrites everything around it. A run that dropped three lines from `CLAUDE.md` still ends with the reference line present and `.gitignore` correct — every other check passes.
 
 ## What the template covers
 

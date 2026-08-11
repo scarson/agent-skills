@@ -30,7 +30,7 @@ dispatch:
   # Record what the runner REQUESTED at dispatch — NOT a self-reported model identity
   # (an agent cannot reliably introspect its own model id). If the user overrode, say so.
   model_requested: "<e.g. latest-opus | gpt-5-successor | user-override:<name>>"
-  reasoning_effort: "<e.g. x-high | high | default | 'default (harness exposes no knob)'>"
+  reasoning_effort: "<e.g. xhigh | high | default | 'default (harness exposes no knob)'>"
   overridden_by_user: <true|false>
 stack:
   - { ecosystem: <npm|pypi|nuget|go|crates|maven>, framework: <name>, version: <x.y.z> }
@@ -56,7 +56,7 @@ Append exactly one JSON object per run (newline-delimited). Same fields as the f
 flattened, plus the finding fingerprints. One line = one run → trivially greppable/plottable:
 
 ```json
-{"run_schema_version":1,"run_id":"2026-06-03T14-30-checkout","date":"2026-06-03T14:30:00Z","scope":"the request pipeline","plugin_version":"superpowers-plus@0.2.0","model_requested":"latest-opus","reasoning_effort":"x-high","overridden_by_user":false,"stack":[{"ecosystem":"pypi","framework":"django","version":"5.0.2"}],"lanes_run":["algorithmic","memory","data-access","concurrency","idiom-currency","cost-map"],"finding_counts":{"by_impact":{"critical":1,"major":3,"minor":4},"by_lane":{"algorithmic":2,"memory":2,"data-access":1,"concurrency":1,"idiom-currency":2},"suspected_bugs":1},"regression":{"prev_run_id":null,"new":8,"persisting":0,"resolved":0},"fingerprints":["algorithmic:inventory.py:find_duplicate_skus:on2-dedup","data-access:inventory.py:enrich_line_items:n-plus-1"]}
+{"run_schema_version":1,"run_id":"2026-06-03T14-30-checkout","date":"2026-06-03T14:30:00Z","scope":"the request pipeline","plugin_version":"superpowers-plus@0.2.0","model_requested":"latest-opus","reasoning_effort":"high","overridden_by_user":false,"stack":[{"ecosystem":"pypi","framework":"django","version":"5.0.2"}],"lanes_run":["algorithmic","memory","data-access","concurrency","idiom-currency","cost-map"],"finding_counts":{"by_impact":{"critical":1,"major":3,"minor":4},"by_lane":{"algorithmic":2,"memory":2,"data-access":1,"concurrency":1,"idiom-currency":2},"suspected_bugs":1},"regression":{"prev_run_id":null,"new":8,"persisting":0,"resolved":0},"fingerprints":["algorithmic:inventory.py:find_duplicate_skus:on2-dedup","data-access:inventory.py:enrich_line_items:n-plus-1"]}
 ```
 
 The ledger is the regression substrate: `jq` / `grep` over it yields "critical count over time",
@@ -113,7 +113,7 @@ If there is no prior run for the scope, `prev_run_id: null` and all findings are
 - `model_requested` records the **dispatch request**, never a guessed model identity.
 - `reasoning_effort` records the **requested** effort. If the harness exposes no effort knob (e.g. it
   lets you set the subagent model but not an effort level), record `"default (harness exposes no
-  knob)"` — do not claim `x-high` you couldn't actually request.
+  knob)"` — do not claim `xhigh` you couldn't actually request.
 - `plugin_version` comes from the plugin's `plugin.json`. If the skill was **vendored flat** (copied
   into a project's `.claude/skills/` without the `plugin.json`), the version isn't locally available —
   record the known value with its provenance (e.g. `superpowers-plus@<version> (vendored; version per

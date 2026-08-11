@@ -13,7 +13,10 @@ Given a git repo (or project directory) and a user request like *"set up pitfall
 3. Presents detected state and proposed actions; waits for user confirmation.
 4. Writes both files from the bundled templates, substituting `[PROJECT NAME]` and the validation date.
 5. Appends references to `CLAUDE.md` and `AGENTS.md` under a sensible existing section (or creates a §Pitfalls section if none fits).
-6. Reports paths written, files updated, and follow-up suggestions.
+6. **Verifies nothing was lost.** Every existing file the run rewrites or edits — a merge into a pitfalls doc that already has real entries, and the `CLAUDE.md` / `AGENTS.md` edits — is backed up first, then compared line-for-line against that backup before the run is reported. The additive edits are expected to come back empty; on a merge, each line that was present before and is absent after gets classified as either intentional template-text replacement or accidental drop, and the drops are restored. Backups are left in place for the user.
+7. Reports paths written, files updated, retained backups, the content-preservation result, and follow-up suggestions.
+
+Step 6 exists because every other check in the skill describes the file it *wrote*, not the file it *replaced*. A merge that dropped a project's own pitfall entries still ends with the universal sections present and the references wired up — the shape checks all pass. Comparing against the pre-change copy is the only check that can see the difference.
 
 ## What the templates carry
 

@@ -17,7 +17,7 @@ A plugin is a cohesive bundle of skills that install together — one standalone
 | Plugin | Skills |
 |---|---|
 | `project-setup` | `claude-agents-md-init`, `git-strategy-init`, `pitfalls-docs-init`, `project-init` |
-| `superpowers-plus` | `build-robust-features`, `bug-hunt-cycle`, `bug-hunter-differential`, `bug-hunter-exploratory`, `bug-hunter-holistic`, `bug-hunter-multipass`, `handoff`, `health-review-cycle`, `performance-audit`, `performance-audit-cycle`, `plan-review-cycle`, `project-health-review`, `wire-walk`, `writing-plans-enhanced` |
+| `superpowers-plus` | `build-robust-features`, `bug-hunt-cycle`, `bug-hunter-differential`, `bug-hunter-exploratory`, `bug-hunter-holistic`, `bug-hunter-multipass`, `design-review-cycle`, `handoff`, `health-review-cycle`, `performance-audit`, `performance-audit-cycle`, `plan-review-cycle`, `project-health-review`, `wire-walk`, `writing-plans-enhanced` |
 | `utility` | `url-to-markdown` |
 
 ## Install
@@ -156,7 +156,7 @@ agent-skills/
 │   │       ├── git-strategy-init/
 │   │       ├── pitfalls-docs-init/
 │   │       └── project-init/             # one-command wrapper around the three above
-│   ├── superpowers-plus/                 # workflow orchestration (14 skills)
+│   ├── superpowers-plus/                 # workflow orchestration (15 skills)
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── .codex-plugin/plugin.json
 │   │   ├── README.md                     # plugin-level overview
@@ -167,6 +167,7 @@ agent-skills/
 │   │       ├── bug-hunter-exploratory/   # hunter methodology — depth-first
 │   │       ├── bug-hunter-holistic/      # hunter methodology — read-everything-then-reason
 │   │       ├── bug-hunter-multipass/     # hunter methodology — five focused passes
+│   │       ├── design-review-cycle/      # adversarial design-doc review (build-robust-features Step 2 delegate)
 │   │       ├── handoff/                  # structured session handoff
 │   │       ├── health-review-cycle/      # full health-review workflow (wraps project-health-review)
 │   │       ├── performance-audit/        # multi-lane performance review + execution-cost map

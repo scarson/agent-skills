@@ -35,3 +35,4 @@ htmlcov/
 # Gas City (solo bead state for local gc-city integration; not shared)
 .beads/
 .claude/
+.worktrees/

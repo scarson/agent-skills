@@ -1,0 +1,40 @@
+#!/bin/sh
+# ABOUTME: Blocks a commit that changes a plugin without bumping its version, that leaves the
+# .claude-plugin and .codex-plugin manifests disagreeing, or that lets a skill's inline copy of an
+# approved language block drift from plugins/<plugin>/approved-blocks.md. Thin wrapper -- all logic
+# lives in scripts/. Enable with: git config core.hooksPath .githooks
+
+set -e
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node is required but was not found on PATH." >&2
+  echo "Install Node, or bypass this one commit with 'git commit --no-verify'." >&2
+  exit 1
+fi
+
+root="$(git rev-parse --show-toplevel)"
+
+# Nothing under plugins/ staged means there is nothing this hook can object to.
+if git diff --cached --quiet --name-only -- plugins/ .claude-plugin/ .agents/; then
+  exit 0
+fi
+
+node "$root/scripts/check-plugin-versions.mjs" --staged
+
+# An ALL-LENS block reproduces its sibling lens blocks verbatim, on purpose -- a dispatched reviewer
+# receives a whole block, not a pointer. Nothing but a staged dispatch-prompts.md can make the copy
+# and its source disagree, and this gate is separate from the approved-block one below because the
+# early exit there would otherwise skip it.
+if ! git diff --cached --quiet --name-only -- 'plugins/*/skills/*/dispatch-prompts.md'; then
+  node "$root/scripts/check-lens-block-sync.mjs" --check
+fi
+
+# Approved-block copies live in plugins/*/skills/**.md, and only plugins/*/approved-blocks.md can
+# change what they are supposed to say -- so anything else staged under plugins/ cannot break them.
+# This check reads the working tree rather than the index: the copies are only ever edited by
+# scripts/sync-approved-blocks.mjs --write, which writes to disk.
+if git diff --cached --quiet --name-only -- 'plugins/*/skills/*.md' 'plugins/*/approved-blocks.md'; then
+  exit 0
+fi
+
+exec node "$root/scripts/sync-approved-blocks.mjs" --check

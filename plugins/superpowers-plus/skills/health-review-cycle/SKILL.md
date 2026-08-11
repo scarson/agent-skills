@@ -8,7 +8,9 @@ argument-hint: "[optional: specific area to focus on, or 'full' for all dimensio
 
 ## Terminology
 
+<!-- approved-block: rfc2119-terminology v1 — authoritative copy: ../../approved-blocks.md -->
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+<!-- /approved-block: rfc2119-terminology -->
 
 ## Overview
 
@@ -17,6 +19,15 @@ Running a full health review cycle for: **$ARGUMENTS** (default: full review acr
 This is a multi-phase workflow. The runner MUST follow each phase in order and MUST NOT skip phases.
 
 This skill orchestrates three sibling workhorses in this plugin: [`project-health-review`](../project-health-review/SKILL.md) for the five-axis adversarial dispatch (Code Quality, Architecture, Test Quality, Ops Readiness, API Design), [`writing-plans-enhanced`](../writing-plans-enhanced/SKILL.md) for the fix plan, and [`plan-review-cycle`](../plan-review-cycle/SKILL.md) for the adversarial plan review. The cycle owns cross-validation, the user-decision loop, and health-review-specific plan instructions. It MUST NOT duplicate the subagent-proofing or plan-review discipline encoded in the delegated skills.
+
+### Mode declaration — is the full cycle warranted?
+
+Declare the mode before Phase 1 and state it in the validated report, naming the evidence:
+
+- **Full cycle (default at a milestone).** All six phases. Honest cost: 5 adversarial agents + verification dispatches during cross-validation + whatever `writing-plans-enhanced` and `plan-review-cycle` spawn downstream. Warranted when the answer feeds a decision — a milestone, a refactor call, a go/no-go — and the remediation actually gets scheduled.
+- **Snapshot (you want the picture, not the loop).** When the ask is "where does this project hurt" with no remediation committed to yet, the sibling [`project-health-review`](../project-health-review/SKILL.md) alone produces the five raw reports and the synthesis. Say so and recommend it. The validation, decision loop, plan, and plan review are the expensive half, and they only earn their cost once someone intends to act on the findings.
+
+The runner MUST NOT run the full cycle silently when the snapshot answers the question asked. A user who wants the full cycle anyway says so and gets it.
 
 ---
 
@@ -36,9 +47,11 @@ Follow the skill exactly through its Execution and Synthesis sections. This prod
 
 The health review agents are adversarial by design — they look for problems. But adversarial agents also produce false positives, mischaracterize severity, and sometimes flag intentional design decisions as bugs. Every finding needs verification.
 
-**COMPLETENESS REQUIREMENT:** The runner MUST account for every single finding from every agent report. Before starting cross-validation, the runner MUST enumerate all findings from all 5 agent reports and the synthesis. Every finding MUST appear in the validated report as one of: confirmed issue, design decision, false positive, or known/already-tracked. **The runner MUST NOT decide what's "too minor" to include — that's the user's decision in Phase 3.** Silently dropping findings defeats the entire purpose of the adversarial review.
+**COMPLETENESS REQUIREMENT:** The runner MUST account for every single finding from every agent report. Before starting cross-validation, the runner MUST enumerate all findings from all 5 agent reports and the synthesis. Every finding MUST appear in the validated report as one of: confirmed issue, design decision, false positive, or known/already-tracked — and in the §2f reconciliation table, which is what makes that claim checkable rather than asserted. **The runner MUST NOT decide what's "too minor" to include — that's the user's decision in Phase 3.** Silently dropping findings defeats the entire purpose of the adversarial review.
 
 ### 2a. Verify each finding against actual code
+
+**If you dispatch verifiers rather than validating in-session, group them by file.** One verifier per finding does not scale — a five-axis review routinely returns dozens, and most verifiers would re-read the same files. Dispatch over **co-located findings**: up to ~3 *same-file* findings per verifier, each assessed independently and returned with its own verdict. The verifier shares the file read, not the judgment. Do NOT group across unrelated files — that dilutes attention and reintroduces the false-negative risk the grouping was meant to avoid. One verdict per finding either way, which is what keeps the reconciliation below mechanical. Architecture-dimension findings often have no single file to co-locate on; validate those in-session rather than forcing them into a file-keyed group.
 
 For each finding in the consolidated report AND in individual agent reports (agents may have findings the synthesis missed):
 
@@ -75,7 +88,7 @@ For confirmed issues, assess fix complexity and blast radius:
 
 ### 2e. Write validated report
 
-Write to `docs/health-reviews/<date>-<slug>-validated.md`:
+Write to `docs/health-reviews/<date>-<slug>-validated.md`, using the structure below. **Match its length to the findings, not to the template** — every confirmed issue earns its lines, and a section with nothing in it earns the word "None". Do not pad with restated summaries, per-dimension narration, or boilerplate scaffolding around an empty result; rank by what the reader acts on first, and let the minor tail sit below the findings that matter rather than competing with them.
 
 ```markdown
 # <Scope> Health Review — Validated Findings
@@ -126,9 +139,26 @@ Write to `docs/health-reviews/<date>-<slug>-validated.md`:
 **Where tracked:** <plan file, bug hunt report, or pitfalls doc>
 ```
 
-**COMPLETENESS CHECK:** Before moving on, re-read every agent report and verify that every finding is accounted for in the validated report. Count the findings: the total of confirmed + design decisions + false positives + known/already-tracked MUST equal or exceed the total unique findings across all agent reports. If any are missing, add them now.
+### 2f. Reconciliation table (gating artifact)
 
-After writing the validated report, update your private journal (or equivalent) with key observations: what patterns emerged across dimensions, which findings surprised you, what the false-positive rate looked like, and any insights about the project's overall health.
+"Every finding is accounted for" is only real if something checks it. Re-reading the reports and comparing counts is the check that silently fails — it passes whether or not a finding was dropped, because nothing names what should be there. Replace it with a table the validated report carries:
+
+```markdown
+## Reconciliation
+
+| Dimension | Raw finding | Merged into | Disposition |
+|---|---|---|---|
+| ops-readiness | O3 — worker exits without draining claimed jobs | I2 | confirmed issue |
+| architecture | A7 — same drain gap, framed as lifecycle ownership | I2 | duplicate |
+| code-quality | C1 — error swallowed in retry helper | — | known / tracked (pitfalls IMPL-4) |
+| api-design | P2 — list endpoint unpaginated | I5 | confirmed issue |
+```
+
+Every raw finding from every agent report appears exactly once, mapped to a validated ID or to a terminal disposition (duplicate / false positive / known-tracked / design decision). A raw finding in no row is a **coverage leak** and MUST block the Phase 6 commit until it is placed.
+
+The table is the artifact, not the assertion: a reader — or the next agent — can check it against the five raw reports without redoing the validation, which a prose "I verified completeness" claim never allows. The sibling [`design-review-cycle`](../design-review-cycle/SKILL.md) enforces the same property at closure by mapping every diff hunk to a ledger row; this is that discipline applied to findings.
+
+After writing the validated report, record observations in the project's memory store: what patterns emerged across dimensions, which findings surprised you, what the false-positive rate looked like, and any insights about the project's overall health. Prefer a store the project has deliberately set up — a dated `docs/learnings/` file, a `gstack-learn`-style command, or whatever the project uses — since its presence signals where the team wants this kind of record to live. Failing that, fall back to the agent's own native memory (Claude's `MEMORY.md` / project memory, Codex's equivalent). If neither is apparent, surface the observations to the user and ask whether and where to record them; they MUST NOT be silently dropped.
 
 ---
 
@@ -195,7 +225,7 @@ This appendix is the persistent record. It MUST be written to the plan file — 
 
 Before committing, the runner MUST rigorously review the fix plan for subagent-readiness by invoking [`plan-review-cycle`](../plan-review-cycle/SKILL.md) (a sibling skill in this plugin — always present when this cycle is). `plan-review-cycle` owns the multi-round adversarial review discipline; the cycle MUST NOT duplicate it here.
 
-After the review cycle completes, the runner SHOULD log observations about plan quality and recurring patterns to a private journal (or whatever pattern-store the project uses — an MCP journal, a `gstack-learn`-style command, a dated `docs/learnings/` file, etc.). Capture:
+After the review cycle completes, the runner SHOULD record observations about plan quality and recurring patterns to the project's memory store, following [`plan-review-cycle`](../plan-review-cycle/SKILL.md) §After completion's cascade (project store → agent-native memory → ask the user; never silently dropped) — the runner has just invoked that skill, so its guidance is already at hand and MUST NOT be restated differently here. Capture:
 
 - **Type:** pattern
 - **Key:** `plan-review-[slug]`
@@ -204,6 +234,8 @@ After the review cycle completes, the runner SHOULD log observations about plan 
 ---
 
 ## Phase 6: Commit Reports
+
+**Gate:** the §2f reconciliation table MUST be complete before this commit — every raw agent finding mapped to a validated ID or a terminal disposition. An unplaced finding is a coverage leak and blocks the commit until it is placed.
 
 The runner MUST stage and commit all health review cycle artifacts:
 
