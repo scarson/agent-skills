@@ -132,13 +132,25 @@ If the opening self-review produces 0 findings, re-check the plan against each d
 
 ### After completion
 
-First, emit the **completion summary**: the final cumulative round table with its notes line — this is where the disclosures land for the reader, not only in mid-transcript per-round emissions. Then the runner SHOULD record observations about plan quality and recurring patterns in the project's **memory system**. Prefer a store the project has deliberately set up — a dated `docs/learnings/` file, a `gstack-learn`-style command, or an MCP journal (e.g. obra's private-journal) — since its presence signals where the team wants this kind of record to live. Failing that, fall back to the agent's own native memory (e.g. Claude's `MEMORY.md` / project memory, Codex's equivalent), which most harnesses provide. If neither is apparent, the runner MUST surface the observations to the user in the session and ask whether — and where — to record them; it MUST NOT silently drop them. When recording, capture:
+First, emit the **completion summary**: the final cumulative round table with its notes line — this is where the disclosures land for the reader, not only in mid-transcript per-round emissions. Then the runner SHOULD record observations about plan quality and recurring patterns in the project's **memory system**. Prefer a store the project has deliberately set up — a dated `docs/learnings/` file, a `gstack-learn`-style command, or an MCP journal (e.g. obra's private-journal) — since its presence signals where the team wants this kind of record to live. Failing that, fall back to the agent's own native memory (e.g. Claude's `MEMORY.md` / project memory, Codex's equivalent), which most harnesses provide. If neither is apparent, the runner MUST surface the observations to the user and ask whether — and where — to record them; it MUST NOT silently drop them. **That question MUST NOT block the cycle.** In a non-interactive or unattended run — or wherever the user is otherwise unreachable — do not wait on an answer: record the observations verbatim in the completion summary, note in the round table that no durable store was found, and carry on to the commit. The conservative default is the same one the escalation standoff takes: proceed and disclose. A finished review must never stall on a bookkeeping question, and the observations survive in the summary either way. Ask only when a user turn is already in hand. When recording, capture:
 
 - **Type:** pattern
 - **Key:** `plan-review-[slug]`
 - **Insight:** what patterns emerged, what was most commonly wrong
 
-Then commit the reviewed plan (tier 1; see §Repo assumptions for the degraded tiers).
+**Then flip the plan's review record.** If the plan carries a `**Plan review:**` line in its `## Execution Status` section — every plan written by `writing-plans-enhanced` does — update it in the edit pass that precedes the commit, so the record and the reviewed text land together in one commit:
+
+```markdown
+**Plan review:** ✅ COMPLETED <YYYY-MM-DD> — N rounds, terminating round <independent | self-review> (<cold read | persistent>, <model>)
+```
+
+If the plan already reads ✅ from an earlier review — the sibling cycles review a plan once inside `writing-plans-enhanced` and again in their own later phase — this line records the **most recent completed review**, and `N rounds` is that run's count, not a cumulative total. Replace the line rather than appending to it; the per-run detail lives in each run's round table, and a line that accretes history stops being scannable, which is the only thing it is for.
+
+Record rounds, date, and the terminating round's provenance. Do **not** record a commit SHA here: the commit that lands this line is the one made below, so any SHA written would name a commit that does not yet exist, and an invented anchor is worse than an absent one (§Repo assumptions). Where the run was degraded — all rounds self-review, cross-model unavailable on a named surface — say so on this line as well as in the round table; this line is the disclosure a later reader is most likely to encounter, because it travels with the plan rather than with the session.
+
+If the plan has no such line — a plan not written by `writing-plans-enhanced`, or a standalone document — do not fabricate the section. Note its absence once in the round table's notes and proceed.
+
+Then commit the reviewed plan — **automatic and unprompted** (tier 1; see §Repo assumptions for the degraded tiers). The runner MUST NOT ask whether to commit; it commits and reports the SHA. Project rules forbidding agent commits override, and on hook failure or unusual repo state, surface once and stage instead of forcing.
 
 Finally — automatic and unprompted, skipped on explicit user opt-out and skipped by the pass itself where subagent dispatch is unavailable — invoke the sibling `editorial-pass` skill on the just-committed plan, handing it the plan path and, at tier 1, that commit's SHA as the certified baseline. It performs a meaning-preserving legibility rewrite under a closed remedy set (accept, or revert to the certified text, verified hunk-by-hunk by an independent dispatch) and lands as its own commit immediately on top of this one. It cannot raise findings, edit substance, or reopen this cycle — the review is over; this is the rendering.
 
