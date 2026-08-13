@@ -34,7 +34,7 @@
 
 - **Gate:** not posed | posed <date> | partial (<IDs answered>) | answered
 - **Closure:** cold reader — pending | clean @ `<ref echoed by that leg>` | dirty · verifier — pending | clean @ `<ref echoed by that leg — MUST match>` | dirty · live-vs-snapshot re-compare — pending | identical | differed → re-snapshotted at `<new ref>`
-- Terminal state: completed | abort to brainstorming | stopped awaiting user — written as the last ledger edit at every terminal and carried by that terminal's single closing commit (§Completion). Anchor-stability: the run is open while this line is blank OR reads stopped awaiting user (that terminal resumes — the posed gate stays live); only completed and abort release anchors.
+- Terminal state: completed | abort to brainstorming | terminated-for-execution | stopped awaiting user — written as the last ledger edit at every terminal and carried by that terminal's single closing commit (§Completion). Anchor-stability: the run is open while this line is blank OR reads stopped awaiting user (that terminal resumes — the posed gate stays live); completed, abort, and terminated-for-execution release anchors.
 
 ### Index (append-only rows; State cells edited in place)
 

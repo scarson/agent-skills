@@ -401,13 +401,16 @@ Plans MUST carry the **Execution Status** section from the moment the plan is wr
 - [Surfaced file/pattern + status: shipped fix / deferred / flagged only]
 ```
 
-The **Plan review** line takes one of three states, and only `plan-review-cycle`'s completion or an explicit user exemption may move it off the first:
+The **Plan review** line takes one of four states, and only `plan-review-cycle`'s terminals or an explicit user exemption may move it off the first:
 
 ```markdown
 **Plan review:** ⬜ NOT RUN
 **Plan review:** ✅ COMPLETED 2026-08-12 — 4 rounds, terminating round independent (cold read, Opus)
+**Plan review:** ⚠️ TERMINATED-FOR-EXECUTION 2026-08-12 — 9 rounds, 6 verify-first flags annotated in place
 **Plan review:** ⏭ SKIPPED 2026-08-12 — user exemption for this plan
 ```
+
+The ⚠️ state is written by `plan-review-cycle`'s convergence circuit breaker: the review hit diminishing returns and terminated with its open items annotated at their spans in the plan. An executor of a ⚠️ plan treats every annotated span as verify-before-build and returns defects it finds as findings — the plan is partially verified, not certified.
 
 It records rounds, date, and the terminating round's provenance — deliberately **not** a commit SHA. The review's own commit is the one that lands this line, so any SHA written here would either name a commit that does not yet exist or have to be invented, and an invented anchor is worse than an absent one (§Repo assumptions).
 

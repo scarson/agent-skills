@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// ABOUTME: Verifies that every plugin changed in a diff range had its version bumped, that the root,
-// .claude-plugin, and .codex-plugin manifests all agree, and that the plugin sets in both marketplace
-// files match the plugins/ directories. Run by .githooks/pre-commit; see docs/releasing.md.
+// ABOUTME: Verifies that every plugin changed in a diff range had its version bumped, that the root
+// and .claude-plugin manifests agree, and that the plugin sets in both marketplace files match the
+// plugins/ directories. Run by .githooks/pre-commit; see docs/releasing.md.
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync, readdirSync } from 'node:fs'
@@ -9,9 +9,19 @@ import { join } from 'node:path'
 
 const SEMVER = /^\d+\.\d+\.\d+$/
 // Plugin-relative paths of every manifest carrying a version. The bare `plugin.json` is the Agent
-// Plugins spec location (§5.1: clients MUST check for a manifest at plugin.json in the plugin root);
-// the two dotted ones are where Claude Code and Codex look today.
-const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
+// Plugins spec location (§5.1: clients MUST check for a manifest at plugin.json in the plugin root),
+// and is what every conformant client reads — Codex among them. `.claude-plugin` is Claude Code's
+// own location, which it still reads in preference to the portable one.
+const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json']
+// The portable manifest, and the exact `$schema` it must declare. Codex selects a plugin's
+// manifest by this value — find_plugin_manifest_path takes the root plugin.json only when the
+// value is an agent-plugins.org/schemas/ URI, and otherwise falls through to
+// .claude-plugin/plugin.json, which carries no `skills` pointer because Claude Code discovers
+// skills/ by convention. A missing or misspelled schema therefore costs Codex users every skill
+// in the plugin, silently. .codex-plugin used to absorb that fallback; retiring it made the exact
+// value load-bearing, which is why it is checked here rather than left to a reader's eye.
+const ROOT_MANIFEST = 'plugin.json'
+const AGENT_PLUGINS_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json'
 // The manifest whose version at the base ref answers "did this plugin get bumped?". It must be one
 // that has existed for the whole history being checked: a manifest introduced partway through reads
 // as absent at older base refs, which the bump requirement treats as a brand-new plugin and exempts.
@@ -105,10 +115,15 @@ function listPlugins () {
     const tracked = git('ls-files', '--cached', '--', 'plugins/').split('\n')
     const names = new Set()
     for (const path of tracked) {
-      // Any of the three manifest locations identifies a plugin, so deleting one location still
-      // leaves the plugin discoverable — and its now-missing manifest reportable — rather than
-      // making the whole plugin silently drop out of the check.
-      const match = /^plugins\/([^/]+)\/(?:\.claude-plugin\/|\.codex-plugin\/)?plugin\.json$/.exec(path.trim())
+      // Any tracked file under plugins/<name>/ makes it a plugin, not just a manifest. Keying
+      // discovery off the manifests instead would let a commit that deletes every manifest while
+      // leaving skills behind drop the plugin out of the check entirely — no missing-manifest
+      // report, and no bump demanded either, because the bump loop only walks what this returns.
+      // That escape narrowed from three files to two when .codex-plugin was retired, so close it
+      // rather than keep relying on one of them surviving. A wholly deleted plugin leaves no
+      // tracked paths behind and is still correctly exempt. This also matches --against mode,
+      // which has always listed every directory regardless of which manifests it holds.
+      const match = /^plugins\/([^/]+)\//.exec(path.trim())
       if (match) names.add(match[1])
     }
     return [...names].sort()
@@ -167,6 +182,14 @@ for (const plugin of plugins) {
       fail(`${path}: version "${json.version}" is not three dot-separated integers`)
       readable = false
       continue
+    }
+    if (manifest === ROOT_MANIFEST && json.$schema !== AGENT_PLUGINS_SCHEMA) {
+      fail(
+        `${path}: $schema is ${json.$schema === undefined ? 'missing' : `"${json.$schema}"`}, ` +
+        `must be exactly "${AGENT_PLUGINS_SCHEMA}".\n` +
+        '    Codex picks this manifest by that value. Anything else and it falls back to\n' +
+        '    .claude-plugin/plugin.json, which resolves no skills — the plugin loads empty.'
+      )
     }
     versions[manifest] = json.version
   }

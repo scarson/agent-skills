@@ -1,6 +1,6 @@
 #!/bin/sh
-# ABOUTME: Blocks a commit that changes a plugin without bumping its version, that leaves the
-# .claude-plugin and .codex-plugin manifests disagreeing, or that lets a skill's inline copy of an
+# ABOUTME: Blocks a commit that changes a plugin without bumping its version, that leaves the root
+# Agent Plugins and .claude-plugin manifests disagreeing, or that lets a skill's inline copy of an
 # approved language block drift from plugins/<plugin>/approved-blocks.md. Thin wrapper -- all logic
 # lives in scripts/. Enable with: git config core.hooksPath .githooks
 

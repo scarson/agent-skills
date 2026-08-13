@@ -1,7 +1,7 @@
 {
   "name": "utility",
   "description": "General-purpose utility skills (url-to-markdown, etc.)",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"

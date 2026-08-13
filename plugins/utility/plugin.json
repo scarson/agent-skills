@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "utility",
   "description": "General-purpose utility skills (url-to-markdown, etc.)",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"
@@ -14,5 +14,16 @@
     "skills",
     "utilities",
     "tools"
-  ]
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Utility Skills",
+        "shortDescription": "General-purpose utility skills",
+        "longDescription": "Reusable utility skills for agent workflows — url-to-markdown (web article → Markdown).",
+        "developerName": "Samuel Carson",
+        "category": "Productivity"
+      }
+    }
+  }
 }
