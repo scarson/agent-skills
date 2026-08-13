@@ -15,8 +15,9 @@ const bumper = join(repoRoot, 'scripts', 'bump-plugin-version.mjs')
 const checker = join(repoRoot, 'scripts', 'check-plugin-versions.mjs')
 
 // Plugin-relative manifest paths, mirroring the bumper's own list. The bare `plugin.json` is the
-// Agent Plugins spec location; the two dotted ones are the Claude Code and Codex locations.
-const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
+// Agent Plugins spec location every conformant client reads; the dotted one is Claude Code's.
+const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json']
+const AGENT_PLUGINS_SCHEMA = 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json'
 
 function git (cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
@@ -38,6 +39,9 @@ function makeFixture (plugins, catalogVersion = '1.0.0') {
   for (const [name, version] of Object.entries(plugins)) {
     for (const manifest of MANIFEST_FILES) {
       writeJson(join(dir, 'plugins', name, manifest), {
+        // Only the root manifest declares the Agent Plugins schema; the checker, which one test
+        // below runs against this fixture, requires the exact value there and nowhere else.
+        ...(manifest === 'plugin.json' ? { $schema: AGENT_PLUGINS_SCHEMA } : {}),
         name,
         version,
         description: 'fixture plugin',
@@ -152,7 +156,7 @@ test('bump order does not change the catalog result', () => {
 
 test('refuses to write when the manifests already disagree', () => {
   const dir = fixture({ alpha: '0.4.0' })
-  const path = join(dir, 'plugins', 'alpha', '.codex-plugin/plugin.json')
+  const path = join(dir, 'plugins', 'alpha', '.claude-plugin/plugin.json')
   const json = JSON.parse(readFileSync(path, 'utf8'))
   json.version = '0.9.0'
   writeJson(path, json)
@@ -161,8 +165,7 @@ test('refuses to write when the manifests already disagree', () => {
   assert.equal(code, 1)
   assert.match(output, /disagree|mismatch/i)
   assert.equal(versionOf(dir, 'alpha', 'plugin.json'), '0.4.0', 'must not have written')
-  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '0.4.0', 'must not have written')
-  assert.equal(versionOf(dir, 'alpha', '.codex-plugin/plugin.json'), '0.9.0', 'must not have written')
+  assert.equal(versionOf(dir, 'alpha', '.claude-plugin/plugin.json'), '0.9.0', 'must not have written')
 })
 
 test('refuses to write when the root manifest is the one out of step', () => {
@@ -203,7 +206,20 @@ test('a bump changes only the version line of each file', () => {
   const dir = fixture({ alpha: '0.4.0' }, '0.7.0')
   bump(dir, 'alpha', 'minor')
   const numstat = git(dir, 'diff', '--numstat').trim().split('\n')
-  assert.equal(numstat.length, 4, `expected 4 changed files, got:\n${numstat.join('\n')}`)
+  // Enumerated literally rather than derived from MANIFEST_FILES. That constant mirrors the
+  // bumper's own list, so a future edit dropping a manifest from both would move this expectation
+  // in lockstep and the test would pass while silently covering less. The point of this assertion
+  // is to be an independent statement of the current contract, so it has to be spelled out.
+  const expected = [
+    '.claude-plugin/marketplace.json',
+    'plugins/alpha/.claude-plugin/plugin.json',
+    'plugins/alpha/plugin.json'
+  ]
+  assert.deepEqual(
+    numstat.map(line => line.split('\t')[2]).sort(),
+    expected,
+    `wrong set of changed files:\n${numstat.join('\n')}`
+  )
   for (const line of numstat) {
     const [added, removed] = line.split('\t')
     assert.equal(added, '1', `${line}: formatting was not preserved`)

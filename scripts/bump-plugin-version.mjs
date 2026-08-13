@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// ABOUTME: Bumps a plugin's version in all three manifests — the Agent Plugins root plugin.json,
-// .claude-plugin, and .codex-plugin — plus the marketplace catalog version, in one operation, so the
-// copies cannot drift apart. Every place the version appears is written here; see docs/releasing.md
-// for when to run it and which digit to move.
+// ABOUTME: Bumps a plugin's version in both manifests — the Agent Plugins root plugin.json and
+// .claude-plugin — plus the marketplace catalog version, in one operation, so the copies cannot
+// drift apart. Every place the version appears is written here; see docs/releasing.md for when to
+// run it and which digit to move.
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
@@ -11,9 +11,10 @@ import { join } from 'node:path'
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/
 const DIGITS = ['major', 'minor', 'patch']
 // Plugin-relative paths of every manifest carrying a version. The bare `plugin.json` is the Agent
-// Plugins spec location (§5.1: clients MUST check for a manifest at plugin.json in the plugin root);
-// the two dotted ones are where Claude Code and Codex look today.
-const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json', '.codex-plugin/plugin.json']
+// Plugins spec location (§5.1: clients MUST check for a manifest at plugin.json in the plugin root),
+// and is what every conformant client reads — Codex among them. `.claude-plugin` is Claude Code's
+// own location, which it still reads in preference to the portable one.
+const MANIFEST_FILES = ['plugin.json', '.claude-plugin/plugin.json']
 const CATALOG = '.claude-plugin/marketplace.json'
 
 function die (message) {

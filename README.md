@@ -125,19 +125,20 @@ Both agents honor the [Agent Skills specification](https://github.com/openai/ski
 
 A skill may add optional Codex metadata at `agents/openai.yaml` (display name, brand color, implicit-invocation policy). Claude Code ignores this file, so it's safe to include.
 
+Plugin-level Codex metadata — storefront display name, category, long description — lives in `plugin.json` under `extensions["com.openai"]`, the [client-extension](https://agent-plugins.org/plugin-authors/client-extensions) namespace the Agent Plugins spec reserves for exactly this. Clients that do not implement a namespace ignore it, so the manifest stays portable. See `docs/releasing.md` for why this replaced the retired `.codex-plugin/plugin.json`.
+
 ## Adding a new plugin
 
-1. Create the plugin directory with all three manifests:
+1. Create the plugin directory with both manifests:
 
    ```
    plugins/<plugin-name>/
    ├── plugin.json                 # Agent Plugins spec manifest
    ├── .claude-plugin/plugin.json
-   ├── .codex-plugin/plugin.json
    └── skills/
    ```
 
-2. Copy and adapt the manifests from an existing plugin (e.g. `plugins/utility/`). Use kebab-case for the plugin name — every consumer requires it. All three must carry the same version; `scripts/bump-plugin-version.mjs` keeps them in step and the pre-commit hook fails if one is missing or stale.
+2. Copy and adapt the manifests from an existing plugin (e.g. `plugins/utility/`). Use kebab-case for the plugin name — every consumer requires it. Both must carry the same version; `scripts/bump-plugin-version.mjs` keeps them in step and the pre-commit hook fails if one is missing or stale.
 3. Register the plugin in both marketplace catalogs:
    - `.claude-plugin/marketplace.json` — add to `plugins[]` with `"source": "./plugins/<plugin-name>"`.
    - `.agents/plugins/marketplace.json` — add an entry with `"source": { "source": "local", "path": "./plugins/<plugin-name>" }`.
@@ -150,39 +151,39 @@ A skill may add optional Codex metadata at `agents/openai.yaml` (display name, b
 agent-skills/
 ├── plugins/                              # every plugin this repo publishes
 │   ├── project-setup/                    # CLAUDE.md/AGENTS.md, git strategy, pitfalls bootstrap
-│   │   ├── plugin.json                   # Agent Plugins spec manifest
+│   │   ├── plugin.json                   # Agent Plugins spec manifest (Codex, Cursor, Copilot, …)
 │   │   ├── .claude-plugin/plugin.json    # Claude Code plugin manifest
-│   │   ├── .codex-plugin/plugin.json     # Codex plugin manifest
 │   │   └── skills/
 │   │       ├── claude-agents-md-init/
 │   │       ├── git-strategy-init/
 │   │       ├── pitfalls-docs-init/
 │   │       └── project-init/             # one-command wrapper around the three above
-│   ├── superpowers-plus/                 # workflow orchestration (15 skills)
+│   ├── superpowers-plus/                 # workflow orchestration (18 skills)
 │   │   ├── plugin.json
 │   │   ├── .claude-plugin/plugin.json
-│   │   ├── .codex-plugin/plugin.json
 │   │   ├── README.md                     # plugin-level overview
 │   │   └── skills/
-│   │       ├── build-robust-features/    # design → plan → execute chain
+│   │       ├── brainstorming-enhanced/   # requirements-pinning brainstorm wrapper
 │   │       ├── bug-hunt-cycle/           # full bug-hunt workflow (composes the 4 hunters)
 │   │       ├── bug-hunter-differential/  # hunter methodology — paired-function invariants
 │   │       ├── bug-hunter-exploratory/   # hunter methodology — depth-first
 │   │       ├── bug-hunter-holistic/      # hunter methodology — read-everything-then-reason
 │   │       ├── bug-hunter-multipass/     # hunter methodology — five focused passes
+│   │       ├── build-robust-features/    # design → plan → execute chain
 │   │       ├── design-review-cycle/      # adversarial design-doc review (build-robust-features Step 2 delegate)
+│   │       ├── editorial-pass/           # legibility rewrite of a review-certified doc
 │   │       ├── handoff/                  # structured session handoff
 │   │       ├── health-review-cycle/      # full health-review workflow (wraps project-health-review)
 │   │       ├── performance-audit/        # multi-lane performance review + execution-cost map
 │   │       ├── performance-audit-cycle/  # full performance-audit workflow (wraps performance-audit)
 │   │       ├── plan-review-cycle/        # adversarial multi-round plan review
 │   │       ├── project-health-review/    # five-axis adversarial dispatch
-│   │       ├── wire-walk/                 # reachability gate — operator flows traced to file:line
-│   │       └── writing-plans-enhanced/   # subagent-proofed plans + Living Document Contract
+│   │       ├── wire-walk/                # reachability gate — operator flows traced to file:line
+│   │       ├── writing-plans-enhanced/   # subagent-proofed plans + Living Document Contract
+│   │       └── writing-skills-enhanced/  # skill authoring + this repo's reference discipline
 │   └── utility/
 │       ├── plugin.json
 │       ├── .claude-plugin/plugin.json
-│       ├── .codex-plugin/plugin.json
 │       └── skills/
 │           └── url-to-markdown/
 │               ├── SKILL.md              # required; name + description frontmatter
