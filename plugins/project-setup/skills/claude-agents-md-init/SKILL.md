@@ -2,7 +2,7 @@
 name: claude-agents-md-init
 description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "initialize CLAUDE.md", "bootstrap agent guidance", "add CLAUDE.md and AGENTS.md", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, testing, debugging, memory), placeholder sections for project-specific content, and a Sibling-sync reminder. Default writes both; use `--target claude|agents|both` to narrow scope. Alignment-checks any existing root file and STOPs for review before standing up a sibling against a divergent one. Any rewrite passes a content-preservation gate — a line-level diff against the pre-change backup. Cross-platform — git and standard file ops only. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
 metadata:
-  version: "2.10"
+  version: "2.11"
 ---
 
 # claude-agents-md-init
