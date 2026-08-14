@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "superpowers-plus",
   "description": "Workflow orchestration wrapping superpowers — a requirements-pinning brainstorming wrapper with a self-brainstorm decision-log mode, front-to-back feature-building (brainstorm + adversarial design review + planning), enhanced plan writing with the Living Document Contract, adversarial plan review, a wire-walk reachability gate, structured session handoffs, a post-certification editorial pass (meaning-preserving legibility rewrite of review-certified docs), and the full bug-hunt, health-review, and performance-audit workflows (four hunter methodologies + five-axis project health review + multi-lane performance review with execution-cost map + cycle skills, all in one plugin)",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"
