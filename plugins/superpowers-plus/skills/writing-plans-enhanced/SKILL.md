@@ -302,6 +302,14 @@ a commit that never existed.
   `--merge` and preserves per-commit history; under a squash-merge
   workflow, record the squashed commit that landed on the default branch
   instead, or the banner points at a SHA no reader can find.
+  **The banner ships in its own commit, after the work.** A commit
+  cannot contain its own hash, so the banner naming a SHA cannot ride
+  in the commit that SHA identifies. Commit the work with a pathspec
+  that excludes this plan, read the SHA back from git, then commit the
+  banner and table update on top. Amending is not a way out — it
+  rewrites the SHA you just recorded. Where the phase ships through a
+  PR, **On PR merge** below is a second such update for the same
+  reason, and lands after the merge.
 - **On phase defer:** the executor MUST update the banner with ⏸ status
   AND a prose description of the unblock condition + a link to the
   likely-unblocker artifact (plan page, task, or PR whose own Execution
@@ -340,6 +348,14 @@ cheap; reconstruction by downstream readers is expensive, compounds
 across dispatches, and fails silently when state is split across PR
 notes and commit messages.
 ```
+
+### Why the ship banner needs its own commit
+
+The banner names the commit that shipped the work, and the plan is a file in the same repository — so an executor who stages the plan alongside the work is asking a commit to contain its own hash. Every executor hits this, and each invents the same boundary commit privately. That is the signal it belongs in the contract: the block propagates by copy, so a gap in it is rediscovered once per phase, and the workaround an executor improvises lands in their plan rather than back here.
+
+The resolution is ordering, not a different anchor. Dropping the SHA and letting `git log -1 -- <plan>` supply it — what `editorial-pass` does for its ledger line — does not transfer: there the commit carrying the line *is* the artifact being anchored, whereas here the banner and the work are different objects, and `git log` on the plan returns the commit that wrote the banner. The contract's read-back (**On phase claim**) checks that a ✅ banner's SHA is reachable on the default branch; an anchor pointing at the banner's own commit passes that check while saying nothing about whether the phase shipped.
+
+At the degraded repo tiers (§Repo assumptions) the ordering question dissolves with the commits: where there is no commit to name, the banner records what the project does offer, or states plainly that no durable ref exists.
 
 ### What format to use
 
