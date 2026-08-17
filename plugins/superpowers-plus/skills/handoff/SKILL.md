@@ -44,7 +44,7 @@ A handoff MUST do seven things. Skipping any of the first five degrades the hand
 
 5. **Cover at least 6 adversarial perspectives on the handoff itself.** Five canonical perspectives plus at least one session-specific perspective the agent chooses based on what actually happened this session. Every one of the six gets applied. See §Adversarial review below for how many rounds follow. One-pass handoffs miss seams; review from several distinct perspectives catches them.
 
-6. **Emit the continuation prompt into the session, verbatim, in a copyable code block.** The handoff doc remains the authoritative artifact, but the continuation prompt is the one part a human partner acts on immediately — usually by pasting it into a fresh agent. It MUST appear in the session text, not only in the doc. See §Phase 5 below.
+6. **Emit the continuation prompt into the session, verbatim, in a copyable code block.** The handoff doc remains the authoritative artifact, but the continuation prompt is the one part a human partner acts on immediately — usually by pasting it into a fresh agent. It MUST appear in the session text, not only in the doc. It MUST open with a title line naming the work, because the tool it gets pasted into commonly names the new session after the prompt's opening words. See §Phase 5 below.
 
 7. **Write volatile state as readings, and open the continuation prompt with a grounding step.** Anything the doc asserts that can change without the doc changing — branch, tip, PR state, live jobs, deploys — is stamped with when it was observed and written in past tense, never as present-tense fact. The prompt's step 0 tells the successor to re-ground before acting. The handoff is frozen the moment it is written; the world it describes is not. See §Volatile state and §Phase 5.
 
@@ -100,7 +100,7 @@ The handoff doc structure SHOULD include:
 - **Deferred items** — each with a semantic description of what needs to happen before the item is pickable + a link to the likely-unblocker artifact (its plan page, its task, its PR — whichever is authoritative per the project's Living Document Contract conventions). Prose condition + link is durable across paraphrases and scope edits; exact-string coordination across multiple agents is not.
 - **Operational guardrails accumulated this session** — so a fresh agent doesn't re-discover them
 - **Priority queue** — numbered, with dependencies
-- **Continuation prompt** — paste-ready prompt for a fresh agent resuming the work, written inside a fenced code block so it can be copied out of the doc in one action without dragging surrounding prose along. This same prompt is also emitted into the session in Phase 5.
+- **Continuation prompt** — paste-ready prompt for a fresh agent resuming the work, opening with a title line naming the work (§Phase 5) and written inside a fenced code block so it can be copied out of the doc in one action without dragging surrounding prose along. This same prompt is also emitted into the session in Phase 5.
 
 #### Volatile state — write it as a reading, not a fact
 
@@ -167,9 +167,23 @@ The closing status report to the human partner ends with the continuation prompt
 - **Sits inside a fenced code block**, so the human partner copies it in one action with no editing afterward. If the prompt itself contains fenced code, wrap it in a longer fence (four or more backticks) so the inner fences survive.
 - **Is preceded by one line naming the handoff doc's path**, so the reader knows where the durable copy lives and what the block came from.
 - **Is the last thing in the report.** It's what the reader acts on; nothing goes below it.
-- **Opens with the grounding step**, as the prompt's step 0, fitted to this session from the shape below. Fitting happens once, before either copy exists; the character-for-character rule above then binds the two emitted copies to each other, not either of them to the shape. The prompt is what a fresh agent consumes — paste-ready, stripped of the doc's surrounding prose — so it is where the volatile claims travel and where the correction has to travel with them. A project-level convention would not travel: the prompt routinely gets pasted into a different repo, project, or tool than the one whose conventions the author had in mind.
+- **Opens with a title line naming the work**, before step 0. See §The title line below.
+- **Carries the grounding step as step 0**, directly under the title line, fitted to this session from the shape below. Fitting happens once, before either copy exists; the character-for-character rule above then binds the two emitted copies to each other, not either of them to the shape. The prompt is what a fresh agent consumes — paste-ready, stripped of the doc's surrounding prose — so it is where the volatile claims travel and where the correction has to travel with them. A project-level convention would not travel: the prompt routinely gets pasted into a different repo, project, or tool than the one whose conventions the author had in mind.
 
-**The grounding step.** Everything inside the fence is successor-facing and goes into the prompt. The authoring rules follow it; nothing in the fence is a note to yourself.
+**The title line.** The prompt's first line MUST be a markdown H1 naming the work the successor is picking up, followed by a blank line, then step 0:
+
+```
+# <short phrase naming the work — e.g. "MCP Apps local rendering spike">
+```
+
+Agents commonly derive a session's name from the opening of its first prompt, and the continuation prompt is that first prompt. A prompt that opens with step 0 therefore names the session after the grounding boilerplate — "Ground yourself first" — which is identical across every handoff ever written and identifies none of them. The human partner scanning a list of sessions is the reader being served here: they need to tell this resumed work from the six other things they have in flight, and the title is the only part of the prompt they will see there.
+
+- **Name the work, not the act of handing off.** `# MCP Apps local rendering spike`, not `# Handoff continuation`, `# Resume work`, or `# Session 4`. The successor already knows it is resuming; the partner does not know *what*.
+- **Make it a heading, not a sentence.** A leading sentence works — it beats boilerplate — but the `#` marker is what reliably gets the line treated as a name rather than as the first words of the body. Where the destination is a plain-text field that renders `#` as noise, demote it to a bare sentence naming the work; never drop it.
+- **Keep it short enough to survive truncation** in a session list — roughly 60 characters or fewer — and carry the project or surface where the partner plausibly has several in flight (`billing-api: retry backoff rollout`).
+- **Write it once, before either copy exists.** Like the fitted step 0, the title is part of the prompt, so it is subject to Phase 4 review and to the character-for-character rule binding the doc's copy to the session's. A title added to the chat copy at emit time is a second, different prompt.
+
+**The grounding step.** It sits directly under the title line. Everything inside the fence is successor-facing and goes into the prompt. The authoring rules follow it; nothing in the fence is a note to yourself.
 
 ```
 0. Ground yourself before doing anything else. The state described below was
@@ -246,7 +260,7 @@ Azure DevOps uses `az repos pr show`, GitLab `glab mr view`; any of them works i
 
 **Run your checks in Phase 3; confirm in Phase 5.** The Phase 3 run produces the observations the manifest records. After Phase 4 settles, glance at them once more. If something moved, update the affected entries and items and treat it as a finding under the loop rule: re-run the rounds those fixes touch, then the full pass. Glance once and do not chase perfect freshness — the manifest records an observation, not a guarantee, and step 0 covers the gap between the last observation and the successor's first action.
 
-**What the fence protects.** Step 0 is never optional and always comes first.
+**What the fence protects.** The title line is never optional and is always the first line; step 0 is never optional and always comes first among the steps, directly under it. The title names the work for the partner choosing the session; step 0 grounds the agent working inside it. Neither substitutes for the other.
 
 **Four rules hold in every handoff**, whatever it hands off: live state beats the document; divergence this document does not account for stops and asks rather than improvising; state having moved usually means pending work already landed, which is not a reason to redo it; and an error or empty result from a check is information, not a malfunction. The third is the anti-redo default — the only one still standing in a handoff with no repository, once the two cautions below drop out.
 
@@ -273,6 +287,8 @@ These mean the handoff is not yet complete:
 - "I'll capture it at the end" — By the end you've forgotten the mid-session discoveries. Capture as you go or re-mine hot context in Phase 1.
 - "The continuation prompt is in the doc, they can open it" — Opening a file, finding the section, and selecting the right span is friction on the one step the human partner takes most often. Reproduce it in the session.
 - "I'll describe the next steps instead of pasting the prompt" — A description isn't paste-ready. The prompt goes in the session verbatim, in a code block.
+- "The prompt starts with step 0" — Then the session it creates is named after the grounding boilerplate, identically to every other handoff's. Title line first, step 0 under it.
+- "The title is obvious from the body" — Not from a session list, which shows the opening of the prompt and nothing else. Obvious-in-context is exactly the information that doesn't survive the trip.
 - "The PR state was accurate when I committed it" — And false ten minutes later, because the handoff is usually the last act before the merge. Write-time accuracy isn't the bar; a reader who can't tell a frozen reading from a current fact is the defect. Stamp it, write it in observational past tense, and resolve the outcomes wherever an action depends on the answer.
 
 ## Common rationalizations (rebuttals)
@@ -286,6 +302,7 @@ These mean the handoff is not yet complete:
 | "Status report to the user IS the handoff" | No. The user's chat context is ephemeral. Durable artifacts are the handoff. The status report references them — and reproduces exactly one thing verbatim, the continuation prompt, because that's the piece the human partner acts on rather than reads. |
 | "Pasting the full prompt in chat duplicates the doc" | Deliberately. The doc is the durable copy; the session block is the copyable one. This is the one place duplication is correct, because the two copies are produced at the same instant and the chat copy is discarded with the session — there's no window for them to drift. |
 | "The prompt is long, I'll trim it for chat" | A trimmed prompt is a different prompt, and it's the one that gets pasted. Emit what Phase 4 signed off on. |
+| "A title line is cosmetic" | It's the session's name. Harnesses derive that name from the prompt's opening, so without a title every resumed session is named after step 0's first words — and a list of sessions all called "Ground yourself first" costs the partner an open-and-read on each one to find the one they wanted. |
 | "I already updated the plan" | Did you update ALL the plans that this session touched? Coord log? Outstanding-items? Pitfalls? Usually at least one is missed. |
 | "The next agent can check git themselves" | They can, and they won't — a confident declarative sentence in a handoff doesn't present itself as a question worth verifying. That's why step 0 names the specific things to check and what each looked like when observed, rather than offering a caveat the reader has to decide to act on. |
 
@@ -301,7 +318,8 @@ Before declaring the handoff complete, verify:
 - [ ] The continuation prompt is paste-ready and self-contained, and lives in a fenced code block inside the handoff doc
 - [ ] The continuation prompt is reproduced verbatim in a fenced code block at the end of the closing session report, preceded by the handoff doc's path — emitted after Phase 4 review settled, not before
 - [ ] Every volatile claim, wherever it appears, is written in observational past tense and stamped once per observation block (UTC always, SHA where one exists) — transcribed from a check run this session, never recalled; every actionable outcome is resolved at the queued item whose next step depends on it
-- [ ] Step 0 comes first and carries all four universal rules (live state wins; unaccounted divergence stops and asks; moved state usually means work landed, not a reason to redo it; an error or empty result is information), **both** landed-work cautions wherever repo or PR state is handed off, the questions, and the manifest — no authoring notes inside the fence, no forge, shell, or OS assumed
+- [ ] The continuation prompt's first line is a title naming the work (markdown H1 by default), it names the work rather than the act of handing off, and it is identical in both copies — the doc's and the session's
+- [ ] Step 0 comes first among the steps, directly under the title line, and carries all four universal rules (live state wins; unaccounted divergence stops and asks; moved state usually means work landed, not a reason to redo it; an error or empty result is information), **both** landed-work cautions wherever repo or PR state is handed off, the questions, and the manifest — no authoring notes inside the fence, no forge, shell, or OS assumed
 - [ ] The manifest has one entry per volatile thing named, negative claims included, each carrying an observation made this session, `re-check needs <access>` where re-checking needs access the reader may lack, or bare `UNVERIFIED (<reason>)` where it was never observed — never an invented value, never a claim dropped to close the gap
 - [ ] All 6 adversarial perspectives applied (5 canonical + at least 1 agent-chosen session-specific; further rounds run while they were still yielding); the final full pass through every round run produced zero material findings
 - [ ] Every session-specific round (Round 6 and any 7+ the agent elected to run) is documented by name in the handoff with its findings count; perspective choices are specific to this session's content, not generic templates or re-labels of canonical rounds
