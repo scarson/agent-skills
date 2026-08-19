@@ -1,8 +1,8 @@
 ---
 name: git-strategy-init
-description: Use when setting up a new or existing repository with git-worktree-based conventions for multi-agent or multi-branch workflows. Triggers on "set up git strategy", "initialize git workflow", "add git-strategy.md", "adopt the worktree workflow", or similar requests. Generates a project-specific git-strategy.md from a bundled template, auto-detects current branch / branching pattern / forge, updates .gitignore, and links the doc from any existing CLAUDE.md / AGENTS.md. For two-branch gitflow projects (integration branch + release branch), retains and substitutes the bundled §Release branch section covering the integration → release publication PR mechanic; for single-branch projects it removes that section entirely. Every existing file the run edits is backed up first and passes a content-preservation gate — a line-level comparison against the pre-change copy — before the run is reported. Cross-platform — instructions rely on git and standard file operations only; no Claude-Code-specific tooling.
+description: Use when setting up a new or existing repository with git-worktree-based conventions for multi-agent or multi-branch workflows. Triggers on "set up git strategy", "initialize git workflow", "add git-strategy.md", or "adopt the worktree workflow". Generates a project-specific git-strategy.md from a bundled template, auto-detects current branch / branching pattern / forge (GitHub, GitLab, Azure DevOps, Bitbucket) and adapts the doc's PR commands to it, updates .gitignore, and links the doc from any existing CLAUDE.md / AGENTS.md. For two-branch gitflow projects (integration branch + release branch), retains and substitutes the bundled §Release branch section covering the integration → release publication PR mechanic; for single-branch projects it removes that section entirely. Every existing file the run edits is backed up first and passes a content-preservation gate before the run is reported. Cross-platform — instructions rely on git and standard file operations only; no Claude-Code-specific tooling.
 metadata:
-  version: "1.3"
+  version: "1.4"
 ---
 
 # git-strategy-init
@@ -27,6 +27,7 @@ Do NOT use for:
 ## Inputs
 
 - The bundled template at `references/git-strategy-template.md` (relative to this skill's root). Do NOT read the template from any other location — the version bundled here is the authoritative one.
+- The bundled **forge mappings** at `references/forge-mappings.md`. The template is written against GitHub + `gh`; this file carries the per-forge adaptations (GitLab, Azure DevOps, Azure DevOps Server, Bitbucket, unknown / self-hosted) that Step 8 applies. Read only the section for the detected forge.
 - The current working directory must be the root of a git repository.
 
 ## Workflow
@@ -63,8 +64,9 @@ Collect these values silently (do not prompt yet):
 | `dev` branch present (local or remote) | Same pattern for `dev` |
 | `develop` branch present | Same for `develop` |
 | Remote URL | `git remote get-url origin` (may fail if no remote — that's OK) |
-| Forge | Parse remote URL for `github.com`, `gitlab.com`, `bitbucket.org`, or note "unknown/self-hosted" |
-| `gh` CLI available | Run `gh --version` — non-zero exit = not installed |
+| Forge | Parse remote URL. `github.com` → GitHub; `gitlab.com` → GitLab; `bitbucket.org` → Bitbucket; `dev.azure.com` or `*.visualstudio.com` → **Azure DevOps** (hosted). A host that is none of these but serves the Azure DevOps URL shape (`/<collection>/<project>/_git/<repo>`) — e.g. `tfs.example.com` — is **Azure DevOps Server (on-premises)**, which is a SEPARATE section from hosted Azure DevOps, not the same one: `az repos` does not work against Server, so the two map to different commands entirely. Self-hosted GitLab is just GitLab. Only fall back to "unknown/self-hosted" when neither host nor URL shape identifies it. |
+| Forge CLI available | Run the check **for the detected forge**: GitHub → `gh --version`; GitLab → `glab --version`; Azure DevOps (hosted) → `az repos -h` (which also proves the `azure-devops` extension is installed, where a bare `az --version` would not); **Azure DevOps Server → skip this check entirely** — there is no CLI for it, and its mapping targets the REST API, so record `n/a (REST)` rather than probing for `az`. Non-zero exit = not installed. Do NOT run `gh --version` as a generic "forge CLI" probe: `gh` is installed on plenty of machines whose repos live elsewhere, so a bare `gh` success on an Azure DevOps repo reports GitHub capability the project does not have. |
+| Azure DevOps MCP available (ADO only) | If the forge is Azure DevOps, note whether an Azure DevOps MCP server is connected — it is an alternative to the `az` CLI. Informational only; it does not change which forge section Step 8 applies. |
 | `docs/` directory exists | File-system check for directory at `./docs` |
 | CLAUDE.md at repo root | File-system check for file at `./CLAUDE.md` |
 | AGENTS.md at repo root | File-system check for file at `./AGENTS.md` |
@@ -97,7 +99,7 @@ Infer as much as possible, then present one consolidated block and ask the user 
   - If integration is `develop` and `master` is present (no `main`) → release branch is `master`.
   - Else → not two-branch gitflow; the §Release branch section will be removed in Step 4.
 
-- **Forge:** From remote URL parsing. If self-hosted / unknown, treat as GitHub-compatible (commands in template use `gh`) but note in the output that the user should verify CLI commands map.
+- **Forge:** From remote URL parsing (Step 2). The detected forge selects one section of `references/forge-mappings.md`, which Step 8 applies. Do NOT treat an unidentified forge as GitHub-compatible — that assumption is what silently ships a wrong merge command. Route it to the **Unknown / self-hosted** section, which leaves the `gh` commands in place *and* emits a note saying they are unverified. Surface the detected forge and its CLI availability in the confirmation block so the user can correct a misdetection before anything is written.
 
 - **Output location:**
   - If `docs/` exists → default `docs/git-strategy.md`.
@@ -115,7 +117,8 @@ Detected / inferred:
   Integration branch:   main
   Branching pattern:    GitHub flow
   Forge:                GitHub (origin: git@github.com:org/repo.git)
-  gh CLI:               installed
+  Forge CLI:            gh — installed
+  Forge adaptations:    none (template is written for GitHub)
   Output path:          docs/git-strategy.md
   Worktree path:        .claude/worktrees/
   Will update:          CLAUDE.md (found), AGENTS.md (not found)
@@ -186,15 +189,19 @@ Wait for user confirmation before proceeding.
    - Find-replace `[RELEASE_BRANCH]` → user's release branch name (e.g. `main` for `dev`+`main`, `master` for `develop`+`master`).
    - Skip if the section was removed in step 4 — there are no `[RELEASE_BRANCH]` tokens left to substitute.
 
-8. **Forge-specific adjustments** — only if forge is NOT GitHub:
-   - **GitLab:**
-     - `gh pr create --fill` → `glab mr create --fill`
-     - `gh pr merge <number> --merge --delete-branch` → `glab mr merge <number> --merge --remove-source-branch`
-     - For the §Release branch section (only present in two-branch gitflow output):
-       - `gh pr create --base <release-branch> --head <integration-branch>` → `glab mr create --target-branch <release-branch> --source-branch <integration-branch>` (preserve whatever branch names appear in the post-substitution source line)
-       - `gh pr merge <number> --merge --delete-branch=false` → `glab mr merge <number> --merge` (GitLab's MR-merge does not auto-delete the source branch by default, so the `--delete-branch=false` opt-out has no equivalent — verify behavior in your GitLab version)
-   - **Bitbucket:** Prepend a one-line note near the top of the doc: `> **Forge note:** This project uses Bitbucket. The \`gh\` commands below are placeholders — substitute with your forge's CLI (Bitbucket has no official equivalent; use the web UI or a third-party tool).`
-   - **Unknown / self-hosted:** Similar note, telling the user to verify the commands apply to their forge.
+8. **Forge-specific adjustments** — read `references/forge-mappings.md` and apply the section for the forge detected in Step 2.
+
+   That file is the authoritative mapping; do not reconstruct commands from memory, and do not read it from any other location. It carries a stable **site index** (S1–S12) naming every forge-dependent site in the template, then one section per forge keyed by those IDs.
+
+   - **GitHub** → no changes. Skip to sub-step 9.
+   - **Any other forge** → apply that section's **Site replacements**, then insert its **Forge note** (if it has one) as a blockquote immediately before the `## Why this exists` heading. Sites S10–S12 live in the §Release branch section; skip them if step 4 removed it.
+
+   Two properties of that file matter enough to state here, because getting them wrong produces a doc that looks right and is not:
+
+   - **No forge is a pure flag rename.** Every non-GitHub section carries at least one behavior that changes what a *correct* command looks like, which is why each emits a forge note into the generated document. The sharpest case: `gh` expresses no-squash by *omitting* `--squash`, while both Azure DevOps variants read the completion strategy from a service-side default and need it stated outright (`--squash false` on hosted, `"mergeStrategy": "noFastForward"` on Server). On GitLab the trap is different — `glab mr merge` has no `--merge` flag at all, and auto-merge defaults on whenever a pipeline is running, so the command can return success having only *scheduled* the merge. A mechanical rename loses each of these.
+   - **Where there is no equivalent, say so.** Two ADO sites (reading a file at a PR head, watching CI) have no single-command counterpart. The mapping supplies a git-based or Monitor-based replacement *and* names the absence in prose, so the next reader does not go hunting for a flag that was never there. Do not substitute a command that does something subtly different in order to keep the shape of the original.
+
+   **Verify before writing:** unless the forge is GitHub, grep the pending content for `gh ` and expect zero hits on any forge whose section supplies replacements. Bitbucket and Unknown deliberately retain them as placeholders — there, confirm the forge note is present instead.
 
 9. **Back up before any write that touches an existing file.** Copy it to `<FILENAME>.backup-<timestamp>` before the first write reaches it. This covers every path in this skill that touches existing content: overwriting a `git-strategy.md` the user chose in Step 1 sub-step 3, the `.gitignore` append in Step 5, the `CLAUDE.md` / `AGENTS.md` edits in Step 6, and the `implementation-pitfalls.md` append in Step 6.5. The backup is both the undo path and the *input* to the content-preservation gate in Step 6.6, so it is required on the additive paths too, not only on the destructive one. A file this run creates from nothing needs no backup. Leave backups in place until the gate has run and its result is in the Step 7 report; this skill never deletes them on its own.
 
@@ -369,7 +376,7 @@ The `(retained §Release branch ...)` annotation appears only when two-branch gi
 Mention any follow-ups:
 
 - Commit the new file and updates (suggest a commit message, e.g. `docs: adopt worktree-based git strategy`).
-- If forge is non-GitHub, remind the user to verify the CLI commands.
+- Name the detected forge and which `forge-mappings.md` section was applied. For Bitbucket / unknown, say that the `gh` commands were deliberately left in place as placeholders and a forge note was added. For Azure DevOps, point at the emitted forge note — particularly the `--squash false` requirement, which is the one that silently breaks the no-squash invariant if dropped.
 - If the template scope doesn't cover the project's needs (release branches, hotfix flow), remind the user they'll need separate policy for those.
 - If `implementation-pitfalls.md` was missing: recommend running `pitfalls-docs-init` next. That skill installs `implementation-pitfalls.md` and `testing-pitfalls.md` from templates; the implementation-pitfalls template has the §Orchestration trigger pre-populated, so no manual wiring is needed afterward.
 
@@ -382,6 +389,12 @@ Mention any follow-ups:
 - **Assuming the branching pattern.** If both `main` and `dev` exist, DO NOT guess. Ask the user which is the integration branch — two-branch gitflow looks different from a GitHub-flow repo that happens to have a stale `dev` branch.
 - **Updating only one of CLAUDE.md / AGENTS.md when both exist.** Both should be updated if found. Different agent frameworks read different files; projects that have both need both wired up.
 - **Using Claude-Code-specific tooling.** This skill is cross-platform. Do not invoke `TodoWrite`, `AskUserQuestion`, `Skill`, or any other Claude-Code-specific tool in your implementation. Use plain shell commands, file operations, and natural-language prompts to the user.
+- **Treating an unidentified forge as GitHub, or probing with a bare `gh --version`.** `gh` is installed on plenty of machines whose repos live on other forges, so a success proves the binary exists, not that it can talk to this repo. Detect the forge from the remote first, then check *that* forge's CLI. Shipping the GitHub commands to an Azure DevOps repo produces a doc whose every PR command is wrong.
+
+- **Mechanically renaming `gh` to `az` for Azure DevOps.** The no-squash invariant is expressed in the template as the *absence* of a `--squash` flag. Azure DevOps takes the completion strategy from a service-side default, so the renamed command inherits whatever branch policy allows — the doc still says "never squash" while the command it gives you may well squash. `references/forge-mappings.md` carries the explicit `--squash false` and the other hazards; apply it rather than transliterating.
+
+- **Sending an on-premises Azure DevOps Server repo to the hosted Azure DevOps section.** They are different sections for a hard reason: Microsoft does not support the `az` CLI against Azure DevOps Server, so a Server repo mapped to `az repos` gets a document whose every PR command fails at the CLI. Server maps to the REST API. The tell is the host — anything that is not `dev.azure.com` / `*.visualstudio.com` but serves `/<collection>/<project>/_git/<repo>`.
+
 - **Forgetting the .gitignore update.** Without it, worktree contents will appear in `git status` and can be accidentally committed — the first failure mode the strategy doc is designed to prevent.
 - **Creating `git-strategy.md` without the user's confirmation on output location.** When `docs/` doesn't exist, the default is not obvious. Always ask.
 - **Matching template files in the pre-flight search.** `grep -i git-strategy` matches `git-strategy-template.md`, `git-strategy.draft.md`, etc. Filter by exact basename (`git-strategy.md`, case-insensitive) only. A template is not a deployed policy doc.
@@ -394,9 +407,9 @@ Mention any follow-ups:
 | Step | Action |
 |---|---|
 | 1 | Verify git repo; search for existing `git-strategy.md`; prompt if found |
-| 2 | Auto-detect branch (incl. `master`), forge, paths, CLAUDE.md/AGENTS.md presence |
+| 2 | Auto-detect branch (incl. `master`), forge **and its matching CLI** (never `gh` as a generic probe), paths, CLAUDE.md/AGENTS.md presence |
 | 3 | Present detected values (incl. release branch when two-branch detected); ask user to confirm/adjust |
-| 4 | Read template; delete pre-adoption sections; **remove §Release branch (+ its Contents entry) when NOT two-branch gitflow**; substitute integration branch; substitute worktree path; substitute `[RELEASE_BRANCH]` (no-op when section was removed); forge swaps; **back up every existing file this run will touch**; write |
+| 4 | Read template; delete pre-adoption sections; **remove §Release branch (+ its Contents entry) when NOT two-branch gitflow**; substitute integration branch; substitute worktree path; substitute `[RELEASE_BRANCH]` (no-op when section was removed); **apply the detected forge's section of `references/forge-mappings.md`** (site replacements + forge note); **back up every existing file this run will touch**; write |
 | 5 | Append worktree path to `.gitignore` if not already there |
 | 6 | Append reference to CLAUDE.md and/or AGENTS.md; create section if needed |
 | 6.5 | If `implementation-pitfalls.md` exists without §Orchestration, offer to append the trigger-and-pointer; otherwise note the gap in Step 7 report |
