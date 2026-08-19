@@ -25,7 +25,7 @@ This doc assumes your integration branch is `main`. If it's something else (e.g.
 
 ### Other baked-in assumptions
 
-- **GitHub + `gh` CLI.** Commands like `gh pr create` and `gh pr merge` assume GitHub. For GitLab, Bitbucket, or other forges, substitute the equivalent CLI (`glab`, `bb`, etc.) or web-UI step.
+- **GitHub + `gh` CLI.** Commands like `gh pr create` and `gh pr merge` assume GitHub. For GitLab, Azure DevOps, Bitbucket, or other forges, substitute the equivalent CLI (`glab`, `az repos`, etc.) or web-UI step. **Azure DevOps is not a flag rename** — `--squash false` must be explicit (ADO reads the completion strategy from a per-repo default, so omitting the flag is not the same as `gh`'s no-squash), `--description` is list-valued and shell-sensitive, and `az` silently drops characters the console codec cannot encode. `git-strategy-init` applies these automatically from its `references/forge-mappings.md`; adapting by hand means applying them yourself.
 - **Bash-like shell.** `$(date +%Y%m%d)` and similar constructs assume bash/zsh (or Git Bash on Windows). PowerShell / cmd users will need to adapt.
 - **Worktree path is gitignored.** This doc uses `.claude/worktrees/<name>` by convention (originating from Claude Code usage); any gitignored path inside the repo works. If you pick a different path, substitute it throughout. Whatever path you choose, add it to `.gitignore` before creating any worktrees — otherwise worktree files show up in `git status` and risk being committed.
 - **Optional project-tracking doc.** One bullet in §Mechanics for auto-merge mentions updating a `program-status` doc. If your project has no such doc, ignore that bullet.

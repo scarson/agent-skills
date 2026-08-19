@@ -1,8 +1,8 @@
 ---
 name: claude-agents-md-init
-description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "initialize CLAUDE.md", "bootstrap agent guidance", "add CLAUDE.md and AGENTS.md", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, testing, debugging, memory), placeholder sections for project-specific content, and a Sibling-sync reminder. Default writes both; use `--target claude|agents|both` to narrow scope. Alignment-checks any existing root file and STOPs for review before standing up a sibling against a divergent one. Any rewrite passes a content-preservation gate — a line-level diff against the pre-change backup. Cross-platform — git and standard file ops only. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
+description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "bootstrap agent guidance", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, testing, debugging, memory), placeholder sections for project-specific content, and a Sibling-sync reminder. Default writes both; use `--target claude|agents|both` to narrow scope. Asks whether the repo is personal or team-shared — team mode drops the named-partner lines rather than baking one person into a tracked file every teammate's agent reads. Alignment-checks any existing root file and STOPs before standing up a sibling against a divergent one; any rewrite passes a content-preservation gate. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
 metadata:
-  version: "2.11"
+  version: "2.12"
 ---
 
 # claude-agents-md-init
@@ -47,7 +47,8 @@ Do NOT use for:
 - The current working directory must be the root of the project (git repo preferred but not required).
 - Optional inputs to ask the user for (Step 2):
   - Project name (default: basename of the current directory)
-  - User name (how the agent should address the human partner; default: ask)
+  - User name (how the agent should address the human partner; default: ask — not collected in team mode)
+  - Audience (`personal` or `team`; default: inferred from repo authorship, confirmed with the user)
   - Primary branch name (default: detect from git; fall back to `main`)
   - Target (default: ask with smart default based on existing file state)
 
@@ -89,7 +90,13 @@ Do NOT use for:
 
 7. **Workflow-skills plugin availability.** The template's Skills & Subagents table carries its brainstorming/planning rows in three variant blocks (wrapper rows / base rows / omitted). Determine which applies now, using the ordered test in Step 5 sub-step 3a, so it can be presented for confirmation in Step 3 and applied at write time. Record the answer as `superpowers-plus` / `superpowers-base` / `none`.
 
-8. **Smart default for `--target`:**
+8. **Audience detection.** These files are tracked, so on a shared repo every teammate's agent reads whatever name this run bakes in. Infer a default and carry it to Step 3 for confirmation — never apply it silently:
+   - `git shortlog -sn --all 2>/dev/null` reporting **2 or more** distinct authors → default `team`.
+   - A remote URL whose owner/namespace is an organization rather than the user's own account → default `team`.
+   - Neither signal (single author, personal remote, or no git) → default `personal`.
+   Authorship is a heuristic, not a verdict: a solo repo intended for a team, and a shared repo that happens to have one contributor so far, are both normal. The user's answer in Step 3 wins.
+
+9. **Smart default for `--target`:**
    - Both missing → default `both` (recommend the full install)
    - `CLAUDE.md` present, `AGENTS.md` missing → default `agents` (fill the gap; see Step 4 for sync-block injection and divergence handling)
    - `AGENTS.md` present, `CLAUDE.md` missing → default `claude`
@@ -100,7 +107,8 @@ Do NOT use for:
 Ask the user (or infer, with confirmation) for:
 
 - **Project name** — default to the basename of the current working directory. Used to substitute `[PROJECT NAME]` tokens.
-- **User name** — the name the agent should address the human partner by (e.g., `Sam`, `Alice`). Used to substitute `[USER NAME]` tokens. Default: ask.
+- **Audience** — `personal` (one named human partner) or `team` (a shared repo with no single owner). Default: the inference from Step 1 sub-step 8. This selects the `AUDIENCE:` variant blocks and decides what `[USER NAME]` resolves to; see Step 5 sub-step 3b.
+- **User name** — the name the agent should address the human partner by (e.g., `Sam`, `Alice`). Used to substitute `[USER NAME]` tokens. Default: ask. **Skip this question entirely when audience is `team`** — a team repo has no single correct answer, and asking invites a name that would then misaddress everyone else on the repo.
 - **Primary branch** — `main`, `master`, `dev`, etc. Detect via `git` or ask. Used to substitute `[PRIMARY BRANCH]` tokens.
 - **Brief project description** — one sentence. Used to substitute `[BRIEF PROJECT DESCRIPTION]` in the Project Overview placeholder. Optional — if not provided, leave as the literal token so the agent filling in the doc sees it.
 - **Target** — `claude`, `agents`, or `both`. See Step 1's smart-default logic; confirm with the user if the default isn't obvious.
@@ -119,6 +127,11 @@ Pre-flight:
 
   (When a file is FOUND_AT_ROOT, this block also shows its alignment:
    TEMPLATE_ALIGNED_WITH_SYNC / TEMPLATE_ALIGNED_NO_SYNC / DIVERGENT.)
+
+Audience: personal        (git shortlog shows 1 author)
+  → keeps the named-partner lines; [USER NAME] resolves to the name below.
+  Reply 'team' if this repo is shared — the name is then dropped entirely
+  rather than baked into a tracked file every teammate's agent reads.
 
 Substitutions:
   [PROJECT NAME]                 → my-project
@@ -251,7 +264,7 @@ For each target being written:
 
 2. **Substitute universal placeholders** (same values for all targets):
    - `[PROJECT NAME]` → project name (from Step 2)
-   - `[USER NAME]` → user name (from Step 2)
+   - `[USER NAME]` → audience-dependent (from Step 2): in `personal` mode, the user name; in `team` mode, the literal `the user`. **Substitute every occurrence, including the two inside the `AUDIENCE:` blocks.** Those two sites additionally need sub-step 3b because team mode requires *different wording*, not just a different value — but they are not exempt from this substitution, and treating them as exempt ships a literal `[USER NAME]` into personal-mode output. Order does not matter: run this before or after 3b, since the team-variant text contains no `[USER NAME]` and the personal-variant text is deleted outright in team mode.
    - `[PRIMARY BRANCH]` → primary branch (from Step 2; default `main`)
    - `[BRIEF PROJECT DESCRIPTION]` → description (from Step 2; if not provided, leave as the literal token so the agent filling in the doc sees it)
 
@@ -277,7 +290,17 @@ For each target being written:
    - Apply the identical result to **both** targets: `CLAUDE.md` and `AGENTS.md` get the same block kept, so the pair stays in sync by construction (this is not a per-target substitution like `[SIBLING_FILE]`).
    - **Gap-fill runs, where you write only one sibling and the other already exists** (the `--target` smart default of Step 1): you cannot make the pair match by construction, because the existing file is not yours to silently edit. Any file written before v2.8 carries the base rows. So: after writing, compare the existing sibling's router rows against the block you kept. If they differ, say so in Step 7's report, show the two rows you wrote and the two the sibling carries, and offer to hand-port — apply that only on the user's say-so. Do not silently emit a divergent pair, and do not edit the existing sibling without asking.
 
-4. **Preserve all `<!-- TODO: ... -->` / `<!-- PLACEHOLDER: ... -->` blocks untouched** — they are load-bearing for the agent that later customizes the doc. The `ROUTER:` markers are NOT such blocks: sub-step 3a deletes them.
+3b. **Handle the audience variant blocks** — same keep-one-delete-the-rest mechanic as 3a, driven by the audience from Step 2.
+
+   The template wraps two lines in `<!-- AUDIENCE: personal -->` / `<!-- AUDIENCE: team -->` block pairs (each closed by its `<!-- /AUDIENCE: ... -->` marker): the *address your human partner* bullet in §Foundational rules, and the *we're colleagues* bullet in §Our relationship. Both pairs take the **same** choice — never mix.
+
+   - **Why these two are blocks and not substitutions.** The other nine `[USER NAME]` sites name an addressee ("ask [USER NAME]", "warn [USER NAME]"), so `the user` drops straight in. These two *assert an identity*, and the same substitution produces `Address your human partner as "the user"` — worse than the problem it set out to fix. The team variants say something different, not something blanked.
+   - **Keep exactly ONE block of each pair:** delete the block that does not apply — its two marker lines and every line between them — and delete the surviving block's own two marker lines as well, leaving only its bullet in the list.
+   - **No `AUDIENCE:` marker may survive into the written file.** After the edit, grep the pending content for `AUDIENCE:` — expect zero hits.
+   - Apply the identical result to **both** targets, for the same reason as 3a: the pair stays in sync by construction.
+   - **Gap-fill runs** (writing one sibling while the other already exists) carry the same caveat as 3a: any file written before v2.12 has the personal-mode lines with a name already substituted in. If you write a `team` sibling against a `personal` existing file, say so in Step 7's report and offer to hand-port — apply only on the user's say-so.
+
+4. **Preserve all `<!-- TODO: ... -->` / `<!-- PLACEHOLDER: ... -->` blocks untouched** — they are load-bearing for the agent that later customizes the doc. The `ROUTER:` and `AUDIENCE:` markers are NOT such blocks: sub-steps 3a and 3b delete them.
 
 5. **Write** to the output filename from Step 2. In non-dogfood mode, back up any existing file this run will rewrite or edit in place — replacement, merge, `--merge-template`, or either injection below — at `<FILENAME>.backup-<timestamp>` before the first write touches it. The backup is both the undo path and the *input* to sub-step 8's content-preservation gate, so it is required on every path that touches existing content, not only the destructive one. In dogfood mode, skip the backup — the override guarantees the existing file is untouched.
 
@@ -294,7 +317,7 @@ For each target being written:
    - **Last resort only.** Surface manual instructions + `--merge-template` only if the file is so divergent that no sensible placement exists.
    Report each injection as a separate line in Step 7's summary ("injected External-resource safety section into existing CLAUDE.md").
 
-8. **Content-preservation gate — run before Step 7, never skip.** Every other check in this skill validates the *shape* of what was written (no `ROUTER:` markers, no unresolved tokens, sibling equality, marker recount). None of them compares the output against the input, so none of them can catch a merge or regeneration that silently drops a project-specific rule — the most expensive failure available here, because these files are rulesets and a dropped line is a deleted rule.
+8. **Content-preservation gate — run before Step 7, never skip.** Every other check in this skill validates the *shape* of what was written (no `ROUTER:` or `AUDIENCE:` markers, no unresolved tokens, sibling equality, marker recount). None of them compares the output against the input, so none of them can catch a merge or regeneration that silently drops a project-specific rule — the most expensive failure available here, because these files are rulesets and a dropped line is a deleted rule.
 
    Applies to every file this run **rewrote or edited in place** (Step 4 DIVERGENT merge (c), a `--merge-template` regeneration, sync-block injection at sub-step 6, security-section injection at sub-step 7) and to a file **created as a copy of an existing sibling** (option (b) of Step 4's divergence STOP), where the reference is the sibling the content came from rather than a backup. **Does not apply to a clean create** — nothing existed, so nothing can be lost.
 
@@ -335,7 +358,7 @@ Summarize per target:
 Done.
 
 Created:
-  ./CLAUDE.md                             (from template; substituted project name, user name, primary branch)
+  ./CLAUDE.md                             (from template; audience personal; substituted project name, user name, primary branch)
   ./AGENTS.md                             (from same template; target-specific intro + sibling reminder)
   ./docs/security/external-resource-safety.md  (shared policy file targeted by the External-resource safety section; verbatim, one per project)
 
@@ -387,6 +410,10 @@ Companion skills to consider:
 - **Letting the two files diverge silently.** The Sibling-sync reminder at the top of each output exists for a reason. If a user edits one file, surface the sibling and ask if the same edit should apply there.
 - **Skipping the alignment check on existing files.** If the existing CLAUDE.md is `DIVERGENT` (doesn't follow the template shape), writing AGENTS.md from the template anyway creates an out-of-sync pair at minute zero. The alignment check + STOP (Step 4 "MISSING, sibling DIVERGENT") is what prevents that. Don't hand-wave past it.
 - **Not injecting the sibling-sync block into existing `TEMPLATE_ALIGNED_NO_SYNC` files.** Projects that installed an earlier version of this skill (or hand-authored a template-aligned CLAUDE.md before this skill existed) won't have the sync block. Step 5 step 6 injects it — don't skip, or the pair silently lacks the drift-prevention reminder.
+- **Baking a person's name into a team repo's guidance files.** `CLAUDE.md` and `AGENTS.md` are tracked, so a name collected in Step 2 is read by every teammate's agent — which will then address all of them as that one person. Ask the audience question (Step 1 sub-step 8 infers a default; Step 3 confirms it) before collecting a name, and in `team` mode do not collect one at all. Inferring a name from `git config user.name` or commit history to avoid asking is the same bug with an extra step.
+
+- **Mixing the two `AUDIENCE:` pairs.** The §Foundational rules pair and the §Our relationship pair take the same choice. A file that keeps the personal address-your-partner bullet alongside the team colleagues bullet contradicts itself on its own first screen.
+
 - **Leaving `ROUTER:` markers in the written file, or keeping more than one block.** Step 5 sub-step 3a is keep-exactly-one-then-delete-all-markers: the two blocks that don't apply go entirely, and the surviving block's own marker lines go too. Leaving a marker behind ships an HTML comment that breaks the markdown table it sits inside; keeping two blocks ships duplicate brainstorming/planning rows pointing at different skills. Grep the pending content for `ROUTER:` before writing — zero hits.
 - **Letting the two siblings get different router blocks.** The availability answer is a property of the environment, not of the target file. `CLAUDE.md` and `AGENTS.md` MUST keep the same block; a per-target difference here is exactly the drift the sibling-sync discipline exists to prevent.
 - **Substituting inside code fences or within backticks.** The template uses substitution tokens in prose, not in code examples. Only substitute in prose contexts.
@@ -398,11 +425,11 @@ Companion skills to consider:
 
 | Step | Action |
 |---|---|
-| 1 | Verify repo/project state; search for CLAUDE.md AND AGENTS.md at root; run **alignment check**, **sibling-sync block check**, and **security-section check** on each FOUND_AT_ROOT file; determine **workflow-skills plugin availability** (superpowers-plus / superpowers-base / none); compute smart default target |
+| 1 | Verify repo/project state; search for CLAUDE.md AND AGENTS.md at root; run **alignment check**, **sibling-sync block check**, and **security-section check** on each FOUND_AT_ROOT file; determine **workflow-skills plugin availability** (superpowers-plus / superpowers-base / none); infer **audience** (personal / team) from repo authorship; compute smart default target |
 | 2 | Collect substitution values + target (claude/agents/both) + optional dogfood override |
 | 3 | Present state (including alignment classification) + proposed actions + substitutions + target + **which router block will be kept**; await user confirmation |
 | 4 | Per target: handle existing-file case. **STOP and surface options if filling the gap (sibling MISSING) while the existing file is DIVERGENT.** For TEMPLATE_ALIGNED_WITH_SYNC: leave (but offer the security-section migration if MISSING_SECURITY_SECTION). For TEMPLATE_ALIGNED_NO_SYNC: inject sync block. For MISSING_SECURITY_SECTION: offer the additive security-section migration. For DIVERGENT: standard replace/merge/skip options. |
-| 5 | Per target: write from template with universal substitutions + target-specific substitutions (`[FILE_TITLE]`, `[AGENT_INTRO]`, `[SIBLING_FILE]`). **Keep exactly one `ROUTER:` block in the Skills & Subagents table and delete the others plus all markers** (same block for both targets). Also write the shared `docs/security/external-resource-safety.md` policy file once per project (verbatim, no substitution) whenever the External-resource safety section is present. Inject sync block into any existing TEMPLATE_ALIGNED_NO_SYNC file; inject the External-resource safety section + create the policy file (additive, previewed, both-or-neither) for any MISSING_SECURITY_SECTION file found in Step 1. Back up every file about to be rewritten or edited in place, then — before reporting and before any backup is cleaned up — run the **content-preservation gate** against that backup for each such file: compute the non-blank lines present before and absent after, classify each as intentional replacement or accidental drop, restore the drops. |
+| 5 | Per target: write from template with universal substitutions + target-specific substitutions (`[FILE_TITLE]`, `[AGENT_INTRO]`, `[SIBLING_FILE]`). **Keep exactly one `ROUTER:` block in the Skills & Subagents table, and one `AUDIENCE:` block in each of the two audience pairs; delete the rest plus all markers** (same choices for both targets). Also write the shared `docs/security/external-resource-safety.md` policy file once per project (verbatim, no substitution) whenever the External-resource safety section is present. Inject sync block into any existing TEMPLATE_ALIGNED_NO_SYNC file; inject the External-resource safety section + create the policy file (additive, previewed, both-or-neither) for any MISSING_SECURITY_SECTION file found in Step 1. Back up every file about to be rewritten or edited in place, then — before reporting and before any backup is cleaned up — run the **content-preservation gate** against that backup for each such file: compute the non-blank lines present before and absent after, classify each as intentional replacement or accidental drop, restore the drops. |
 | 6 | Check for companion-skill prerequisites (git-strategy.md, pitfalls docs); suggest follow-ups; remind about Sibling-sync discipline |
 | 7 | Report created files, sync-block injections, retained backup paths, the **content-preservation result** (lines restored + intentional replacements as behavior deltas), placeholders to customize, any divergence callouts, and follow-up skills |
 

@@ -70,7 +70,7 @@ Wait for user response. Respect any skip requests (don't run sub-skills the user
 
 ### Step 2 — Run `claude-agents-md-init`
 
-Invoke the `claude-agents-md-init` sub-skill. Let it own its entire workflow: pre-flight (detect existing `CLAUDE.md` / `AGENTS.md`), collect substitution values (project name, user name, primary branch, brief description), present & confirm, write from the bundled template with substitutions applied, post-install pointers, report.
+Invoke the `claude-agents-md-init` sub-skill. Let it own its entire workflow: pre-flight (detect existing `CLAUDE.md` / `AGENTS.md`), collect substitution values (project name, audience, user name, primary branch, brief description), present & confirm, write from the bundled template with substitutions applied, post-install pointers, report.
 
 **How to invoke depends on your agent framework:**
 - **Claude Code:** use the Skill tool with `skill: "claude-agents-md-init"` (adjust if the plugin namespace is required).
@@ -110,6 +110,7 @@ From claude-agents-md-init:
                       AGENTS.md  (Codex / Cursor / Cline / other AGENTS.md-aware agents)
   Template:           one bundled template, per-target substitutions applied
   Substituted:        project name, user name, primary branch (universal)
+  Audience:           personal or team (team mode omits the user name)
                       intro line, sibling reference (per-target)
   Sibling sync:       each file carries a reminder at the top pointing
                       to its sibling — keep them aligned on future edits
