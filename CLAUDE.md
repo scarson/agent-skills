@@ -7,7 +7,8 @@ Guidance for Claude Code working in this repository. This is a marketplace of ag
 ## Where documents go
 
 - `docs/specs/` — design docs and implementation plans, named `YYYY-MM-DD-<topic>-<design|plan>.md`. This overrides any skill's default spec location; write new specs here, not to `docs/superpowers/specs/`.
-- `docs/plans/` — older working documents, trackers, and `START-` handoff notes, kept where they are rather than moved.
+- `docs/handoffs/` — session handoffs and resume notes, named `YYYY-MM-DD-<topic>-handoff.md`. This is the `superpowers-plus:handoff` skill's default location; the repo's older `START-*.md` notes were migrated here and renamed to match.
+- `docs/plans/` — older working documents and trackers, kept where they are rather than moved.
 - `docs/releasing.md` — the release convention (see below).
 
 ## Before committing changes under `plugins/`

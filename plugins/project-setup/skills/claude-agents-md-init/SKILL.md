@@ -2,7 +2,7 @@
 name: claude-agents-md-init
 description: Use when setting up a new or existing project with agent-guidance files (CLAUDE.md for Claude Code, AGENTS.md for Codex / Cursor / Cline / other AGENTS.md-aware frameworks). Triggers on "set up CLAUDE.md", "set up AGENTS.md", "bootstrap agent guidance", or similar. Installs ONE bundled template as two sibling files with per-target substitutions; both carry the RFC 2119 terminology block, a universal ruleset (principles, TDD, naming, testing, debugging, memory), placeholder sections for project-specific content, and a Sibling-sync reminder. Default writes both; use `--target claude|agents|both` to narrow scope. Asks whether the repo is personal or team-shared — team mode drops the named-partner lines rather than baking one person into a tracked file every teammate's agent reads. Alignment-checks any existing root file and STOPs before standing up a sibling against a divergent one; any rewrite passes a content-preservation gate. Pairs with `git-strategy-init` and `pitfalls-docs-init` but runs independently.
 metadata:
-  version: "2.12"
+  version: "2.13"
 ---
 
 # claude-agents-md-init
@@ -144,7 +144,8 @@ Target: both (will write CLAUDE.md AND AGENTS.md)
 Workflow-skills router rows:
   superpowers-plus available → wrapper rows
     (`superpowers-plus:brainstorming-enhanced`,
-     `superpowers-plus:writing-plans-enhanced`)
+     `superpowers-plus:writing-plans-enhanced`,
+     `superpowers-plus:handoff`)
   The other Skills & Subagents rows are unconditional.
 
 Install paths:
@@ -288,7 +289,7 @@ For each target being written:
    - **Keep exactly ONE block:** delete the two blocks that do not apply — their marker lines and every row between them — and delete the surviving block's own two marker lines as well, leaving only its rows in the table. The `none` block is intentionally empty, so keeping it emits no rows at all.
    - **No `ROUTER:` marker may survive into the written file.** After the edit, grep the pending content for `ROUTER:` — expect zero hits — and confirm the table has exactly one header separator and no blank line between rows.
    - Apply the identical result to **both** targets: `CLAUDE.md` and `AGENTS.md` get the same block kept, so the pair stays in sync by construction (this is not a per-target substitution like `[SIBLING_FILE]`).
-   - **Gap-fill runs, where you write only one sibling and the other already exists** (the `--target` smart default of Step 1): you cannot make the pair match by construction, because the existing file is not yours to silently edit. Any file written before v2.8 carries the base rows. So: after writing, compare the existing sibling's router rows against the block you kept. If they differ, say so in Step 7's report, show the two rows you wrote and the two the sibling carries, and offer to hand-port — apply that only on the user's say-so. Do not silently emit a divergent pair, and do not edit the existing sibling without asking.
+   - **Gap-fill runs, where you write only one sibling and the other already exists** (the `--target` smart default of Step 1): you cannot make the pair match by construction, because the existing file is not yours to silently edit. Any file written before v2.8 carries the base rows. So: after writing, compare the existing sibling's router rows against the block you kept. If they differ, say so in Step 7's report, show every row you wrote and every row the sibling carries — the blocks differ in row *count* as well as content, so a fixed number is the wrong thing to report — and offer to hand-port — apply that only on the user's say-so. Do not silently emit a divergent pair, and do not edit the existing sibling without asking.
 
 3b. **Handle the audience variant blocks** — same keep-one-delete-the-rest mechanic as 3a, driven by the audience from Step 2.
 
