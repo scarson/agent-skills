@@ -90,6 +90,26 @@ Write in this order:
 3. Create any new artifacts identified in Phase 2.
 4. Write the handoff doc LAST, referencing the updated artifacts rather than duplicating their content.
 
+#### Where the handoff doc goes
+
+Default: **`docs/handoffs/YYYY-MM-DD-<topic>-handoff.md`**, kebab-case topic naming the work being handed off — the same phrase as the continuation prompt's title line (§Phase 5), so a handoff sorts adjacently to the plan or spec it hands off. Create `docs/handoffs/` if it does not exist.
+
+Resolve the path in this order:
+
+1. **A path the user named** — overrides everything below.
+2. **A project convention for handoffs specifically** — either an explicit statement in the project's agent-guidance files (`CLAUDE.md`, `AGENTS.md`, or equivalent), or a directory whose contents are *predominantly handoffs*, which is what makes it that project's handoff directory rather than a directory that happens to contain one. A handoff filed among plans in `docs/plans/`, or in any other directory that belongs to a different artifact type, is a stray, not a convention: reading one stray as a convention is how the drift this rule exists to prevent reproduces itself, since every scattered handoff becomes evidence for scattering the next one. Writing the handoff into whichever directory is merely the nearest populated one is the same mistake — `docs/plans/` holds plans, and a handoff filed there is findable only by whoever already knows it went there.
+3. **The default above**, otherwise.
+
+Two ties to break inside step 2, because a rule that leaves them open is satisfied by any answer: where an explicit statement and a directory disagree, **the statement wins**. Where two directories both qualify, take the one holding the **most recent** handoff, and name the choice in the closing report — never resolve a split by starting a third location.
+
+**Anything those two do not settle falls through to step 3.** Two agent-guidance files naming different paths, a directory you cannot confidently call predominantly handoffs, qualifying directories you cannot rank by recency — each of those is step 2 failing to be satisfied, not a puzzle to solve, and the handoff goes to `docs/handoffs/`. Ambiguity resolves to the default rather than to a question: a handoff is written under context pressure, often minutes before the context is gone, and stopping one to adjudicate a directory costs more than filing it in the documented place. This is also what keeps the rule determinate — every path through it ends at a location, and the location a tie produces is the one this convention is trying to establish anyway.
+
+**The `-handoff` stem is not redundant with the directory.** Handoff filenames travel further than any other artifact this suite produces: Phase 5 names the path in the session report, and continuation prompts routinely get pasted into a different repo, project, or tool. The suffix is what identifies the file when it is seen without its directory.
+
+**Collisions.** Long sessions and multi-agent cycles produce more than one handoff per topic per day. If the resolved path is taken by a file that is not this run's own, fork the stem — `-handoff-2.md`, `-handoff-3.md`. After context loss, treat even your own earlier file as foreign and fork. Never overwrite or rewrite a prior handoff: an earlier handoff is another agent's frozen reading, and its successor may still be acting on it.
+
+**Where no repository or docs tree exists.** A handoff written outside a repo (§Volatile state covers this case) still needs a durable home: write under the project root's `docs/handoffs/` if there is a project root at all, and where there is none, write to a session scratch path, report that path in the closing report, and say plainly that it is not durable so the user can move it. Never drop the doc to avoid the gap — the continuation prompt is emitted into the session either way, but the prompt is not the handoff.
+
 The handoff doc structure SHOULD include:
 
 - **Headline state** — branch, tip SHA, pushed?, worktrees live, PRs open where the session has them; outside a repo, whatever plays the same role (running jobs, deployed environments, scratch paths that get cleaned, external tickets). Every claim here is volatile; write the whole block under §Volatile state below. It decays fastest and it is what a fresh agent acts on first.
@@ -303,6 +323,7 @@ These mean the handoff is not yet complete:
 | "Pasting the full prompt in chat duplicates the doc" | Deliberately. The doc is the durable copy; the session block is the copyable one. This is the one place duplication is correct, because the two copies are produced at the same instant and the chat copy is discarded with the session — there's no window for them to drift. |
 | "The prompt is long, I'll trim it for chat" | A trimmed prompt is a different prompt, and it's the one that gets pasted. Emit what Phase 4 signed off on. |
 | "A title line is cosmetic" | It's the session's name. Harnesses derive that name from the prompt's opening, so without a title every resumed session is named after step 0's first words — and a list of sessions all called "Ground yourself first" costs the partner an open-and-read on each one to find the one they wanted. |
+| "This project keeps its docs in `docs/plans/`, so the handoff goes there" | Every project has some populated artifact directory, which is why "nearest populated directory" resolves differently in every project and scatters handoffs across all of them. A convention counts when it is a convention for *handoffs* — a statement in the project's agent-guidance files, or a directory that is predominantly handoffs. One handoff sitting among plans is a stray, and treating a stray as a convention is what turns one misfiled doc into a permanent one. Otherwise `docs/handoffs/`, created if absent. |
 | "I already updated the plan" | Did you update ALL the plans that this session touched? Coord log? Outstanding-items? Pitfalls? Usually at least one is missed. |
 | "The next agent can check git themselves" | They can, and they won't — a confident declarative sentence in a handoff doesn't present itself as a question worth verifying. That's why step 0 names the specific things to check and what each looked like when observed, rather than offering a caveat the reader has to decide to act on. |
 
@@ -323,7 +344,8 @@ Before declaring the handoff complete, verify:
 - [ ] The manifest has one entry per volatile thing named, negative claims included, each carrying an observation made this session, `re-check needs <access>` where re-checking needs access the reader may lack, or bare `UNVERIFIED (<reason>)` where it was never observed — never an invented value, never a claim dropped to close the gap
 - [ ] All 6 adversarial perspectives applied (5 canonical + at least 1 agent-chosen session-specific; further rounds run while they were still yielding); the final full pass through every round run produced zero material findings
 - [ ] Every session-specific round (Round 6 and any 7+ the agent elected to run) is documented by name in the handoff with its findings count; perspective choices are specific to this session's content, not generic templates or re-labels of canonical rounds
-- [ ] The handoff is committed to a durable location (not just a chat message)
+- [ ] The handoff doc is at the resolved path — `docs/handoffs/YYYY-MM-DD-<topic>-handoff.md` unless the user named a path or the project has a convention **for handoffs specifically** — a statement in its agent-guidance files, or a directory that is predominantly handoffs; one stray handoff among plans is not one, and anything ambiguous falls through to the default rather than stopping to ask — and a same-day collision forked the stem (`-handoff-2.md`) rather than overwriting a prior handoff
+- [ ] The handoff is committed to a durable location (not just a chat message). Where committing is unavailable, the doc is left in place, its path is reported, and the gap is disclosed — never an invented commit, never a dropped doc
 
 ## Social proof (pattern observation, not a measured study)
 

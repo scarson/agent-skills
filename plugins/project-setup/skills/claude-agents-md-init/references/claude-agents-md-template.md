@@ -357,7 +357,7 @@ purpose annotations. Focus on STRUCTURAL ROLES, not file lists — Claude can
 [PROJECT NAME]/
   src/                             # production code
   test/                            # test projects
-  docs/                            # plans, pitfalls, design docs
+  docs/                            # plans, pitfalls, design docs, handoffs
   scripts/                         # automation
 ```
 
@@ -382,6 +382,7 @@ Use these proactively — don't wait to be asked.
 <!-- ROUTER: superpowers-plus — keep exactly ONE of these three blocks (see claude-agents-md-init Step 5 sub-step 3a); delete the other two blocks AND all six marker lines. -->
 | `superpowers-plus:brainstorming-enhanced` | Before any new feature or creative work |
 | `superpowers-plus:writing-plans-enhanced` | Before multi-step implementation when requirements exist |
+| `superpowers-plus:handoff` | When context is about to be lost — compaction, session end, or dispatching a fresh agent. Handoff docs land in `docs/handoffs/<date>-<topic>-handoff.md` |
 <!-- /ROUTER: superpowers-plus -->
 <!-- ROUTER: superpowers-base -->
 | `superpowers:brainstorming` | Before any new feature or creative work |
