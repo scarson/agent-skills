@@ -28,11 +28,12 @@ Step 6 exists because every other check in the skill describes the file it *wrot
 - Appendix A: Historical Changelog (empty, ready to append)
 - Appendix B: Unified Summary Table (empty, ready to append)
 - Appendix C: Document Maintenance Guide
-    - When to Update This Document
-    - How to Add a Pitfall (7-step process with condensed-vs-full format heuristic)
-    - How to Update an Existing Pitfall
+    - When to Update This Document (update-first: strengthen the entry that owns the mechanism; add only when none does)
+    - The Ownership Search (shared first step for every capture, role-scoped across the two pitfalls docs)
+    - How to Update an Existing Pitfall (the default capture path)
+    - How to Add a Pitfall (reached only when the ownership search comes up empty; condensed-vs-full format heuristic; mechanism-derived slug IDs recommended over sequential numbers)
     - How to Mark a Pitfall as Superseded
-    - Completeness Checklist (8 items)
+    - Completeness Checklist (split into every-capture items and new-entry-only items)
     - Voice and Style Reference (persuasion-principles reference)
 
 Plus TODO placeholder section for the project's first domain-specific pitfalls.
@@ -111,6 +112,6 @@ Does not depend on Claude Code-specific features. Codex, Cursor, and other agent
 
 ## Limits
 
-- The skill installs, it doesn't maintain. When a real bug surfaces a missing pitfall entry, a human or agent adds it manually using the maintenance guide in the template.
+- The skill installs, it doesn't maintain. When a real bug surfaces a missing pitfall, a human or agent captures it manually using the maintenance guide in the template — usually by strengthening the entry that owns the mechanism, adding a new one only when none does.
 - The skill doesn't auto-populate project-specific pitfalls — those are by definition discovered over time as the project evolves.
 - The §Orchestration entry forward-references `docs/git-strategy.md`. If `git-strategy-init` hasn't been run, the reference is dangling until it is. The templates don't break without it, but the cross-reference is temporarily inert.

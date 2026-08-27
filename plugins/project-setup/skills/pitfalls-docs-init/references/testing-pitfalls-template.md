@@ -12,7 +12,7 @@ Test scenario checklist for reviewing coverage of any feature. Every item on thi
 
 **If you're reviewing tests:** Use the checklist to audit coverage gaps. A passing test suite with missing coverage is worse than a failing test suite with complete coverage — you don't know what's actually protected.
 
-**If you're maintaining this document:** When a real bug slips through to production or staging because of a missing test, add the check item to the appropriate section with the 🔥 marker and a one-line note about the observed failure mode. See §How to Add a Testing-Pitfall at the end.
+**If you're maintaining this document:** When a real bug slips through to production or staging because of a missing test, capture it here — strengthen the check item that already owns the mechanism (adding the 🔥 marker and a one-line note about the observed failure mode), or add a new check item only if none does. See §How to Add a Testing-Pitfall at the end; its first step is the search.
 
 ---
 
@@ -117,6 +117,7 @@ TODO — project-specific topic.
 
 When a bug reaches production (or staging, or late integration testing) because a test was missing:
 
+0. **Search for a check item that already owns the mechanism** — grep this document for the mechanism, not the surface, and read candidates in full. If a check item here owns it, strengthen that item (add the 🔥 note or the missing case) instead of adding a new one. Also grep `docs/pitfalls/implementation-pitfalls.md`: an implementation entry owning the mechanism does NOT replace a check item here — the two documents play different roles — but it changes your step 4 below from "check for" to "add" the cross-reference, and its update procedure may owe the new case too.
 1. **Identify the topic section** the missing test belongs in. If none of sections 1-7 fit, add a new numbered topic section.
 2. **Write the check item** as a `- [ ]` checkbox. Lead with a bolded imperative ("**X is tested.**"), then one sentence explaining what the check covers and why.
 3. **Mark with the 🔥 marker** if the bug was found in this project's own history: `**🔥 Found in [context]:** one-line note about the observed failure mode`.
