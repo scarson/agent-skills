@@ -45,6 +45,7 @@ This doc captures the policy so the failure doesn't recur.
 
 - [Invariants](#invariants)
 - [Day-one workflow for any new work](#day-one-workflow-for-any-new-work)
+- [Pre-PR gate](#pre-pr-gate--rebase-then-verify-locally) — rebase onto fresh main and verify the rebased tree before every PR
 - [What NOT to do](#what-not-to-do)
 - [Recovery from a messy state](#recovery-from-a-messy-state)
 - [Multi-agent coordination rules](#multi-agent-coordination-rules) — git isolation + output persistence
@@ -101,8 +102,12 @@ git worktree add .claude/worktrees/<name> -b <branch-name>
 cd .claude/worktrees/<name>
 # ... edit, test, commit with EXPLICIT paths (no 'git add -A', 'git add .', 'git commit -a') ...
 
-# 4. Push the branch and open a PR
-git push -u origin <branch-name>
+# 4. Run the pre-PR gate (see §Pre-PR gate: rebase onto fresh origin/main,
+#    verify the REBASED tree, confirm main is still an ancestor), then push
+#    the branch and open a PR
+git push -u origin <branch-name>        # first push of this branch
+# git push --force-with-lease           # already pushed AND rebased in the gate;
+                                        # NEVER plain --force
 gh pr create --fill   # or full body per project conventions
 
 # 4a. If the PR develops conflicts with main:
@@ -128,6 +133,25 @@ git branch -D <branch-name>
 ```
 
 If the PR is closed WITHOUT merging (scope rejected, approach abandoned, duplicate), see §Abandoning a branch for cleanup.
+
+## Pre-PR gate — rebase, then verify locally
+
+Run these steps in the worktree before the push that precedes PR creation, for every PR — docs-only included. The gate pre-filters CI; it does not replace CI or change merge classification.
+
+1. **Rebase onto fresh `origin/main` — unconditional.** CI on most forges builds the *merge result* (GitHub's `refs/pull/<n>/merge`), not your branch tip, so a stale base means CI tests a tree nobody ran locally. And a conflict-free rebase can still break the tree — a colliding symbol, an identifier `main` now claims, a test assertion pinned to a string `main` reworded. Clean rebase ≠ working tree.
+2. **Run the project's gates on the rebased tree** — build, tests, lint, whatever the project's build-and-dev commands define. A red gate ends the step: fix before proceeding.
+   <!-- TODO: name the exact gate commands per diff surface, or point at the
+   Build & Dev Commands section of CLAUDE.md / AGENTS.md. -->
+3. **Take an independent local review, if the project has one to take** — a second model, a review skill, a fresh-context subagent — briefed with a pinned scope (this branch's diff against the rebased base) and an output contract (findings with severities, not prose).
+   <!-- TODO: name this project's review command, or delete this step if none
+   exists. If the command can run backgrounded or piped, redirect stdin from
+   /dev/null unconditionally — CLI tools commonly block reading stdin in
+   shells the author never tested, and "it worked when I ran it" is evidence
+   about the author's harness, not the reader's. -->
+4. **Fix accepted findings and review again** until a round returns nothing actionable. Three rounds without a clean one is an `Escalate` (see §Merge authority), not a fourth round.
+5. **Re-check the base, then push.** `git merge-base --is-ancestor origin/main HEAD` must exit 0 — a long verify-and-review cycle can outlive its base; if `main` moved, return to step 1. If you keep losing that race on a busy `main`, don't take another lap: a branch that repeatedly loses races may be too broad — take the escalation in §Handling merge conflicts and surface it, and CI on the merge commit is the backstop if a race slips through anyway. Push with `-u` on a first push, `--force-with-lease` when the branch was pushed before and you rebased (never plain `--force` — see §Handling merge conflicts).
+
+**Keep this gate stateless.** No round counters carried in PR bodies, no review state shared across sessions. A later session that cannot see such state must default to *doing* the checks — and the way to guarantee that is to have no state to lose. If a reviewer asks you to specify counter semantics for step 4, that is the trap: the three-round bound is a judgment call made from what this session can see, not a durable ledger.
 
 ## What NOT to do
 
