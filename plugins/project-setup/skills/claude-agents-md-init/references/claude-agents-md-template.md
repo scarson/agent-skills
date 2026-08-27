@@ -268,7 +268,7 @@ Escalation is honest reporting, not failure. The format is: **REASON** (one or t
 
 **Three-layer memory pattern for load-bearing findings.** When a finding is important enough that a future session rediscovering the hard way would be costly, capture it in all three of the following layers:
 
-1. `docs/pitfalls/*.md` — the read-before-you-code checklist that travels with the repo. Prevents regressions at write-time because reviewers hit this file on the normal path.
+1. `docs/pitfalls/*.md` — the read-before-you-code checklist that travels with the repo. Prevents regressions at write-time because reviewers hit this file on the normal path. Capturing a finding here usually means extending the entry that already owns the mechanism, not adding one — see the update-first bar in §Learning and Memory Management.
 2. User-scoped memory (e.g., gstack learnings at `~/.gstack/projects/<slug>/learnings.jsonl`, or your agent framework's equivalent user-scoped store). Prevents regressions at session-restore time because future sessions auto-load recent learnings.
 3. A per-phase or per-cycle report document at `docs/plans/<topic>/` or equivalent. Preserves chronology for retrospective analysis and auditable decision trails.
 
@@ -287,6 +287,15 @@ mechanism" generically — this is where it resolves. -->
 - Document architectural decisions and their outcomes for future reference
 - Track patterns in user feedback to improve collaboration over time
 - When you notice something that should be fixed but is unrelated to your current task, record it in the memory/journal mechanism rather than fixing it immediately
+
+**Adding to the pitfalls corpus: update first, add last.** `docs/pitfalls/*.md` is a read-before-you-code checklist, not an incident log. Every entry spends context for every future reader on the normal read path — and in a corpus with sequentially-numbered IDs, a new entry is also a write to a counter shared with every concurrent branch, so it conflicts with every other branch that added one, while an entry that doesn't exist can't collide.
+
+- **Search for an owner before you write anything.** You MUST grep the corpus for the *mechanism*, not the surface — the entry that owns your finding usually describes the same failure in different code. Read candidates in full; a table-of-contents line is enough to shortlist an entry, never enough to rule one out. Check the implementation *and* testing documents: one defect often has a written-code entry and a test-design entry, but each document owns only its own role's half — a match in one covers that half of the lesson, not the other document's.
+- **"Same mechanism, different surface" is an update, not an entry.** A different subsystem, a narrower case, or a fresh example of a documented trap is a bullet inside the entry that owns it. Three updates and zero new entries is a good result, not a failure to contribute.
+- **Where an existing entry already carries part of the lesson, cite it instead of restating it.** Re-derived ground drifts, and a reader hitting two subtly different statements of one rule can't tell which is current.
+- **What a new entry must clear.** It names a mechanism a future implementer could plausibly hit again, on the normal path, that no entry covers. A one-off transient, a mistake that only makes sense inside this session's misreading, or a restatement of a rule already in this document goes to user-scoped memory instead.
+- **Updates are not free either.** Extend with the smallest addition that carries the new case; no session narratives. An entry that grows past a reader's patience fails the same way a redundant entry does. And don't stretch an entry's mechanism to dodge the add bar: if a reader hunting your finding would never look under the owning entry's title — or the entry would need a second title to stay honest — it's a new entry (or a split), not an update.
+- **If you are unsure whether an existing entry covers your finding, you have not read it closely enough.** Read it, then decide — and say which entries you considered when you report the work.
 
 **Reflection trigger.** Before reporting a substantive task as DONE, ask: did any commands fail unexpectedly? Did you take a wrong approach and have to backtrack? Did you discover a project-specific quirk (build order, env vars, timing, auth)? Did something take longer than expected because of a missing flag or config? If yes, log a brief operational note to the project's memory/journal mechanism (see the TODO at the top of this section — a memory directory, a dated `docs/learnings/` file, an MCP journal, etc.). The threshold: would knowing this save 5+ minutes in a future session? If yes, log it. If no, skip — don't pad the journal with obvious details or one-time transient errors.
 
@@ -343,7 +352,9 @@ When running comparative evaluations (framework selections, technology spikes):
 **Commit frequently** — aim for small, focused commits that are individually CI-passing. Each logical unit (a package, a migration, a handler) should be its own commit. Large commits make review harder and lose context if context is compacted.
 
 <!-- TODO: Project-specific workflow rules — phase-estimate file updates,
-generated-artifact regen cadence, post-phase pitfall updates, etc. -->
+generated-artifact regen cadence, post-phase pitfall capture (route it through
+the update-first bar in §Learning and Memory Management rather than one new
+entry per discovery), etc. -->
 
 ## Project Layout
 
