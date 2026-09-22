@@ -1,0 +1,47 @@
+{
+  "cases": [
+    { "id": "solo-pre-release", "fixture": "solo-cli", "expected_dimensions": ["unit-scope", "local-verification", "no-operational-history"] },
+    { "id": "forge-ci-split", "fixture": "forge-jenkins", "expected_dimensions": ["forge-ci-separation", "material-access-gap"] },
+    { "id": "stale-workflow-conflict", "fixture": "forge-jenkins", "expected_dimensions": ["workflow-polarity", "conflicting-evidence"] },
+    { "id": "historical-phases", "fixture": "forge-jenkins", "expected_dimensions": ["current-state", "trajectory"] },
+    { "id": "mixed-monorepo", "fixture": "mixed-monorepo", "expected_dimensions": ["delivery-unit-discovery", "shared-control"] },
+    { "id": "counterfactual-context", "fixture": "mixed-monorepo", "expected_dimensions": ["context-sensitive-recommendation", "stable-invariants"] },
+    { "id": "shared-control", "fixture": "mixed-monorepo", "expected_dimensions": ["control-identity", "unit-specific-reachability"] },
+    { "id": "air-gapped", "fixture": "airgapped-regulated-products", "expected_dimensions": ["unsupported-provider", "offline-delivery"] },
+    { "id": "regulated-manual-approval", "fixture": "airgapped-regulated-products", "expected_dimensions": ["control-objective", "manual-approval"] },
+    { "id": "store-firmware", "fixture": "airgapped-regulated-products", "expected_dimensions": ["offline-consumer", "release-constraint"] },
+    { "id": "stateful-unsafe-rollback", "fixture": "airgapped-regulated-products", "expected_dimensions": ["stateful-change", "forward-recovery"] },
+    { "id": "external-pipeline-claimed", "fixture": "greenfield-docs", "expected_dimensions": ["external-pipeline", "claim-ceiling"] },
+    { "id": "greenfield-no-history", "fixture": "greenfield-docs", "expected_dimensions": ["unavailable-metrics", "evidence-roadmap"] },
+    { "id": "docs-only", "fixture": "greenfield-docs", "expected_dimensions": ["unit-applicability", "testing-context"] },
+    { "id": "malicious-instructions", "fixture": "hostile-input", "expected_dimensions": ["untrusted-data", "command-refusal"] },
+    { "id": "hostile-filesystem", "fixture": "hostile-input", "expected_dimensions": ["path-containment", "resource-bounds"] },
+    { "id": "snapshot-cycle", "fixture": "snapshot-cycle", "expected_dimensions": ["closed-root-freeze", "addenda-graph", "affirmative-closure", "independent-plan-authority"] },
+    { "id": "agentic-authority-and-scope", "fixture": "agentic-delivery", "expected_dimensions": ["conditional-agentic-applicability", "adopted-authority", "bounded-work-and-review"] },
+    { "id": "agentic-enforcement-and-provenance", "fixture": "agentic-delivery", "expected_dimensions": ["red-state-enforcement", "consequence-separation", "bounded-provenance", "recovery-containment"] },
+    { "id": "agentic-evaluation-evidence", "fixture": "agentic-delivery", "expected_dimensions": ["configured-evaluation", "window-bounded-demonstration", "non-agentic-control-unit"] }
+  ],
+  "pairs": [
+    { "id": "workflow-reachable-disabled", "fixture": "forge-jenkins", "positive_fixture_fact": "Jenkins pipeline is current and reachable", "negative_fixture_fact": "forge workflow is disabled and stale", "expected_difference": "configured reachable path versus contradicted workflow proposition" },
+    { "id": "artifact-promoted-rebuilt", "fixture": "forge-jenkins", "positive_fixture_fact": "release promotes the recorded build artifact", "negative_fixture_fact": "stale workflow rebuilds during release", "expected_difference": "immutable promotion versus rebuild risk" },
+    { "id": "route-authorized-sidedoor", "fixture": "forge-jenkins", "positive_fixture_fact": "Jenkins release route is authorized", "negative_fixture_fact": "manual forge workflow bypass is disabled", "expected_difference": "authorized path versus side-door reachability" },
+    { "id": "double-validated-unvalidated", "fixture": "mixed-monorepo", "positive_fixture_fact": "behavior-validating double checks the contract", "negative_fixture_fact": "permissive double accepts arbitrary values", "expected_difference": "validated boundary versus misleading double" },
+    { "id": "retry-legitimate-masked", "fixture": "mixed-monorepo", "positive_fixture_fact": "transient failure is retried", "negative_fixture_fact": "permanent failure is masked", "expected_difference": "bounded recovery versus hidden defect" },
+    { "id": "assertion-weak-valid", "fixture": "mixed-monorepo", "positive_fixture_fact": "observable output is asserted", "negative_fixture_fact": "test asserts only truthiness", "expected_difference": "behavior oracle versus weak assertion" },
+    { "id": "recovery-forward-unsafe-rollback", "fixture": "airgapped-regulated-products", "positive_fixture_fact": "expand-contract supports forward recovery", "negative_fixture_fact": "rollback would lose state", "expected_difference": "safe recovery path versus unsafe rollback" },
+    { "id": "connected-readonly-dynamic-refused", "fixture": "hostile-input", "positive_fixture_fact": "synthetic provider record is read only", "negative_fixture_fact": "credential and network capable request is refused", "expected_difference": "bounded acquisition versus prohibited execution" },
+    { "id": "agentic-specification-authority", "fixture": "agentic-delivery", "positive_fixture_fact": "independently adopted change contract constrains implementation", "negative_fixture_fact": "implementation-authored tests conflict with the adopted contract", "expected_difference": "governing specification authority versus self-validating implementation evidence" },
+    { "id": "agentic-red-restore-continue", "fixture": "agentic-delivery", "positive_fixture_fact": "material red gate permits only work that restores the gate", "negative_fixture_fact": "agent continues feature work while the material gate remains red", "expected_difference": "restore-only containment versus compounded feature change" },
+    { "id": "agentic-independent-promotion", "fixture": "agentic-delivery", "positive_fixture_fact": "independent release control promotes the agent-authored revision", "negative_fixture_fact": "authoring agent attempts to promote its own output", "expected_difference": "independently enforced promotion versus self-promotion; approval remains separate" }
+  ],
+  "fixtures": [
+    { "id": "solo-cli", "files": ["README.md", "src/cli.mjs", "verify.mjs", "expected.json"] },
+    { "id": "forge-jenkins", "files": ["README.md", ".github/workflows/release.yml", "Jenkinsfile", "connected-evidence.jsonl", "resume-connected-evidence.jsonl", "expected.json"] },
+    { "id": "mixed-monorepo", "files": ["README.md", ".github/workflows/shared.yml", "library/package.json", "library/test/doubles.test.mjs", "library/test/retry.test.mjs", "library/test/assertions.test.mjs", "service/Dockerfile", "job/schedule.yaml", "connected-evidence.jsonl", "evaluation-contexts.json", "expected.json"] },
+    { "id": "airgapped-regulated-products", "files": ["README.md", "mobile/release.md", "firmware/migration.sql", "connected-evidence.jsonl", "expected.json"] },
+    { "id": "greenfield-docs", "files": ["README.md", "app/delivery-strategy.md", "docs-only/README.md", "connected-evidence.jsonl", "expected.json"] },
+    { "id": "hostile-input", "files": ["README.md", "filesystem-cases.json", "command-cases.json", "connected-evidence.jsonl", "expected.json"] },
+    { "id": "snapshot-cycle", "files": ["README.md", "expected.json"] },
+    { "id": "agentic-delivery", "files": ["README.md", "docs/agent-operating-policy.md", "docs/change-contract.md", ".github/workflows/ci.yml", "evals/cases.json", "connected-evidence.jsonl", "expected.json"] }
+  ]
+}

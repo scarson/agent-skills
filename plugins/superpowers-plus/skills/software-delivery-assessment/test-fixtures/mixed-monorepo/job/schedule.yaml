@@ -1,0 +1,4 @@
+unit: job
+schedule: "0 3 * * *"
+delivery_control: shared-delivery-v2
+verification: dry-run-before-publish

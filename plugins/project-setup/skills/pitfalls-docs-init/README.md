@@ -10,13 +10,20 @@ Given a git repo (or project directory) and a user request like *"set up pitfall
 
 1. Searches for existing `implementation-pitfalls.md` and `testing-pitfalls.md` (exact basename match — templates and example files are not mistaken for deployed docs).
 2. Auto-detects a sensible install path: `docs/pitfalls/` if `docs/` exists, `dev/pitfalls/` as fallback, prompts for custom otherwise.
-3. Presents detected state and proposed actions; waits for user confirmation.
-4. Writes both files from the bundled templates, substituting `[PROJECT NAME]` and the validation date.
-5. Appends references to `CLAUDE.md` and `AGENTS.md` under a sensible existing section (or creates a §Pitfalls section if none fits).
-6. **Verifies nothing was lost.** Every existing file the run rewrites or edits — a merge into a pitfalls doc that already has real entries, and the `CLAUDE.md` / `AGENTS.md` edits — is backed up first, then compared line-for-line against that backup before the run is reported. The additive edits are expected to come back empty; on a merge, each line that was present before and is absent after gets classified as either intentional template-text replacement or accidental drop, and the drops are restored. Backups are left in place for the user.
-7. Reports paths written, files updated, retained backups, the content-preservation result, and follow-up suggestions.
+3. Resolves install, move, merge, and skip choices; materializes every exact document, backup, move, and directory change; then presents the bound preview for confirmation.
+4. Builds both document candidates from the bundled templates, substituting `[PROJECT NAME]` and the validation date.
+5. Builds additive `CLAUDE.md` and `AGENTS.md` candidates under a sensible existing section (or a new §Pitfalls section).
+6. **Preserves project-owned Markdown.** Before confirmation, project-owned spans must remain byte-identical, ordered, and under the same heading/list/fence context except for explicitly confirmed replacements. A non-blank-line comparison is an additional falsifier, not the proof. Merges classify exact template-owned replacements and repair accidental loss or movement in the candidate. Durable backups are planned user outputs, not rollback originals.
+7. Applies only confirmed bytes under the shared project-setup lock and verifies or restores exact receipts.
+8. Reports the human details and ends with one `PROJECT_SETUP_CHILD_RESULT_V1` block for `project-init`.
 
-Step 6 exists because every other check in the skill describes the file it *wrote*, not the file it *replaced*. A merge that dropped a project's own pitfall entries still ends with the universal sections present and the references wired up — the shape checks all pass. Comparing against the pre-change copy is the only check that can see the difference.
+Step 6 exists because every other check describes the candidate's shape, not whether it preserved the input. A merge that drops a project's own entries can still contain all universal sections and links. Comparing the bound input with the candidate catches the loss before any target changes.
+
+## Transaction and wrapper result
+
+The skill retains its detailed human report, then ends every terminal path with one `PROJECT_SETUP_CHILD_RESULT_V1` block for `project-setup/pitfalls-docs-init`. `project-init` can distinguish verified changes and no-ops from whole-run skips, blocks, no-change failures, verified restoration, and uncertain partial state. A per-file `Skipped:` line in the human report is not the child outcome `USER_SKIPPED` when another target changed.
+
+Durable timestamped backups are confirmed outputs retained after success. Ephemeral protected originals exist only for transaction restoration. Content-preservation repair changes candidate bytes before confirmation and is not transaction rollback.
 
 ## What the templates carry
 
@@ -109,6 +116,11 @@ Pure instructions, no bundled scripts, no runtime dependencies. Works with any a
 Git is used only for listing tracked/untracked files during pre-flight; the skill works on non-git projects too (with a warning).
 
 Does not depend on Claude Code-specific features. Codex, Cursor, and other agent frameworks run it equivalently.
+
+## Changelog
+
+- **v1.2** (2026-08) — adopted the shared proposal, lock, receipt, restoration, and `PROJECT_SETUP_CHILD_RESULT_V1` contract; made whole-run decline explicit; moved preservation before confirmation; and separated per-target skips, candidate repair, durable backups, and transaction restoration.
+- **v1.3** (2026-08) — aligned shared application safety with child-owned discovery and lock-time revalidation, practical ordinary-file receipts, and fail-closed linked/junction/reparse targets. The pitfalls templates are unchanged; existing project documents need no content migration.
 
 ## Limits
 

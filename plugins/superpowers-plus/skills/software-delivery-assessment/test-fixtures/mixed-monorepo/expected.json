@@ -1,0 +1,5 @@
+[
+  { "case_id": "mixed-monorepo", "evidence_class": "repository_and_context", "claim_state": "configured", "assertion": "three_delivery_units_share_one_control", "limitations": ["unit_reachability_varies"], "disposition": "supported_capability", "status_effect": "none", "recommendation_shape": "unit_specific_verification" },
+  { "case_id": "counterfactual-context", "evidence_class": "maintainer_context", "claim_state": "claimed", "assertion": "recommendation_order_depends_on_context", "limitations": ["context_is_supplied_not_observed"], "disposition": "user_deferred", "status_effect": "none", "recommendation_shape": "context_sensitive_ordering" },
+  { "case_id": "shared-control", "evidence_class": "repository_and_external_configuration", "claim_state": "configured", "assertion": "shared_control_identity_is_stable", "limitations": ["reachability_is_unit_specific"], "disposition": "supported_capability", "status_effect": "none", "recommendation_shape": "preserve_shared_identity_test_each_unit" }
+]

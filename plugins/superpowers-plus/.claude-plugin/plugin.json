@@ -1,7 +1,7 @@
 {
   "name": "superpowers-plus",
-  "description": "Workflow orchestration wrapping superpowers — a requirements-pinning brainstorming wrapper with a self-brainstorm decision-log mode, front-to-back feature-building (brainstorm + adversarial design review + planning), enhanced plan writing with the Living Document Contract, adversarial plan review, a wire-walk reachability gate, structured session handoffs, a post-certification editorial pass (meaning-preserving legibility rewrite of review-certified docs), and the full bug-hunt, health-review, and performance-audit workflows (four hunter methodologies + five-axis project health review + multi-lane performance review with execution-cost map + cycle skills, all in one plugin)",
-  "version": "0.40.2",
+  "description": "Workflow orchestration wrapping superpowers — design and planning, delivery and testing assessment, graph-linked validation cycles, reachability, session handoff, editorial work, and the full bug-hunt, health-review, and performance-audit workflows. CC BY 4.0-adapted expression is limited to `skills/software-delivery-assessment/references/agentic-delivery.md`, `skills/software-delivery-assessment/references/capability-model.md`, and `skills/software-delivery-assessment/references/testing-model.md`; see `skills/software-delivery-assessment/SOURCE-MAP.md`, `skills/software-delivery-assessment/LICENSE-CC-BY-4.0`, and `skills/software-delivery-assessment/README.md` for provenance and license details.",
+  "version": "0.45.1",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"

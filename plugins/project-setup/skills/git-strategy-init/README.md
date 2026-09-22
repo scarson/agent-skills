@@ -8,9 +8,9 @@ Initializes a project-specific `git-strategy.md` from a bundled template that co
 
 Given a git repo and a user request like *"set up the git strategy in this project"*:
 
-1. Confirms it's running in a git repo and searches for any existing `git-strategy.md` (tracked or untracked).
+1. Confirms it's running in a git repo, searches for every existing `git-strategy.md`, blocks conflicting candidates, and semantically validates a sole candidate before calling it current.
 2. Auto-detects the current branch, the presence of `main` / `dev` / `develop`, the forge (GitHub / GitLab / Azure DevOps / Bitbucket), the CLI **for that forge**, and whether `CLAUDE.md` / `AGENTS.md` exist.
-3. Presents the detected values and asks the user to confirm or adjust.
+3. Resolves output-affecting choices, materializes the exact document/backup/directory changes, and presents the bound preview for confirmation.
 4. Fills out the bundled template — removes the pre-adoption guidance sections, substitutes the integration branch name, substitutes the worktree path, and applies the detected forge's section of `references/forge-mappings.md`.
 5. **Handles the bundled `## Release branch` section based on detected pattern:**
     - **For two-branch gitflow projects** (integration branch is `dev`/`develop`, with `main`/`master` present as the release branch): retains the section in the output and substitutes its `[RELEASE_BRANCH]` placeholder with the detected release branch name. The section covers the integration → release publication PR mechanic, classification rules, and release-branch invariants. The user can opt out at the confirmation step (in which case it's removed instead).
@@ -18,10 +18,17 @@ Given a git repo and a user request like *"set up the git strategy in this proje
 6. Writes the filled-out doc (default: `docs/git-strategy.md` if `docs/` exists; prompts otherwise).
 7. Appends the worktree path to `.gitignore` if not already ignored.
 8. Appends a reference to the new doc under an appropriate section in `CLAUDE.md` and `AGENTS.md` (whichever exist).
-9. **Verifies nothing was lost.** Every existing file the run touches — `.gitignore`, `CLAUDE.md` / `AGENTS.md`, `implementation-pitfalls.md`, and an overwritten `git-strategy.md` — is backed up first, then compared line-for-line against that backup before the run is reported. Because all of this skill's edits are additive, the expected result is empty: any line present before and absent after is a dropped line to restore, not a judgment call. (The one exception is a `git-strategy.md` the user explicitly chose to overwrite, which reports a count instead.) Backups are left in place for the user.
-10. Reports what was changed, the retained backups, the content-preservation result per edited file, and suggests next steps.
+9. **Verifies nothing will be lost.** Before confirmation, it compares every bound input with its candidate. Additive edits must preserve every non-blank line; the one explicit strategy-replacement case reports only a count. Durable backups remain planned user outputs, separate from protected rollback originals.
+10. Applies only the confirmed bytes under the shared project-setup lock, verifies exact receipts, and restores every attempted path after failure when possible.
+11. Reports what happened and ends with one `PROJECT_SETUP_CHILD_RESULT_V1` block for `project-init`.
 
-Step 9 exists because "append only" describes the intent, not the mechanic. These edits are read-file → modify → write-back, and an insertion placed mid-file (a reference line before the next `##` heading, §Orchestration before `# Appendix A`) rewrites everything around it. A run that dropped three lines from `CLAUDE.md` still ends with the reference line present and `.gitignore` correct — every other check passes.
+Step 9 exists because "append only" describes the intent, not the mechanic. These edits reconstruct whole candidate files, and an insertion placed mid-file can drop lines around it. The pre-confirmation comparison catches that before any target changes.
+
+## Transaction and wrapper result
+
+The skill retains its detailed human report, then ends every terminal path with one `PROJECT_SETUP_CHILD_RESULT_V1` block for `project-setup/git-strategy-init`. `project-init` can therefore distinguish verified changes and no-ops from skips, blocks, no-change failures, verified restoration, and uncertain partial state.
+
+`CURRENT_NO_OP` requires more than the six expected headings. Required sections must be substantive and internally coherent; template controls must be resolved; root links must resolve to the sole canonical document; and the requested auxiliary state must have an empty semantic, byte, and topology diff. A valid existing strategy seeds branch and worktree inference, and effective Git ignore behavior counts even when a broader pattern supplies it. Empty, contradictory, truncated, or corrupt documents require repair/adopt/abort handling instead. A conservative repair names every behavior delta; a destructive template replacement is explicit and retains a durable backup.
 
 ## What the template covers
 
@@ -111,6 +118,11 @@ The skill is pure instructions — no scripts, no runtime dependencies, no platf
 - The host agent's native file read/write/search tooling
 
 It does not depend on any Claude Code-specific features. Codex, Cursor, and other agent frameworks that can read markdown skills and execute shell commands can run it equivalently.
+
+## Changelog
+
+- **v1.5** (2026-08) — added semantic validation and a truthful current-document no-op; adopted the shared proposal, lock, receipt, restoration, and `PROJECT_SETUP_CHILD_RESULT_V1` contract; moved preservation before confirmation; and separated durable backups from ephemeral rollback originals.
+- **v1.6** (2026-08) — aligned shared application safety with child-owned discovery and lock-time revalidation, practical ordinary-file receipts, and fail-closed linked/junction/reparse targets. The Git strategy template is unchanged; existing project documents need no content migration.
 
 ## Limits
 

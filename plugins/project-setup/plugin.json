@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "project-setup",
-  "description": "Skills for initializing and configuring new projects (git strategy, etc.)",
-  "version": "0.15.1",
+  "description": "Skills for project guidance, Git policy, pitfalls, Testing strategy, and Delivery strategy",
+  "version": "0.23.0",
   "author": {
     "name": "Samuel Carson",
     "email": "samuel.carson@gmail.com"
@@ -20,8 +20,8 @@
     "com.openai": {
       "interface": {
         "displayName": "Project Setup Skills",
-        "shortDescription": "Skills for bootstrapping new projects",
-        "longDescription": "Skills for initializing and configuring new projects — git strategy setup, and more.",
+        "shortDescription": "Bootstrap project guidance and strategies",
+        "longDescription": "Independent initializers plus a five-child wrapper for project guidance, Git policy, pitfalls, Testing strategy, and Delivery strategy.",
         "developerName": "Samuel Carson",
         "category": "Productivity"
       }

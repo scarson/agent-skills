@@ -1,0 +1,6 @@
+[
+  { "case_id": "air-gapped", "evidence_class": "repository_and_offline_record", "claim_state": "demonstrated", "assertion": "offline_release_path_is_used", "limitations": ["saas_surfaces_unsupported"], "disposition": "supported_capability", "status_effect": "none", "recommendation_shape": "improve_offline_evidence_without_saas_assumption" },
+  { "case_id": "regulated-manual-approval", "evidence_class": "operational_record", "claim_state": "demonstrated", "assertion": "manual_approval_preserves_control_objective", "limitations": [], "disposition": "supported_capability", "status_effect": "none", "recommendation_shape": "preserve_objective_reduce_wait_if_evidenced" },
+  { "case_id": "store-firmware", "evidence_class": "documentation_and_repository", "claim_state": "configured", "assertion": "server_rollback_advice_is_not_portable", "limitations": ["offline_consumers"], "disposition": "not_applicable", "status_effect": "none", "recommendation_shape": "product_specific_recovery" },
+  { "case_id": "stateful-unsafe-rollback", "evidence_class": "repository_observed", "claim_state": "configured", "assertion": "rollback_after_new_writes_is_unsafe", "limitations": ["migration_not_dynamically_exercised"], "disposition": "confirmed_gap", "status_effect": "none", "recommendation_shape": "forward_recovery_expand_contract" }
+]

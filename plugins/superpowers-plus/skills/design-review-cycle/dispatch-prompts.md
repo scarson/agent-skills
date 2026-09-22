@@ -1,8 +1,8 @@
-# design-review-cycle dispatch prompts — v3
+# design-review-cycle dispatch prompts — v4
 
 **Provenance note (maintainers).** The two YAGNI calibration blades quoted in the EXTENT BATCH and ALL-LENS blocks are reproduced from the `claude-agents-md-init` skill's `CLAUDE.md`/`AGENTS.md` template, §Designing software (in the `project-setup` plugin). They are quoted rather than referenced because a dispatched reviewer gets only what the prompt carries. If that template's YAGNI wording changes, update these two blocks and bump the prompts version; if these blocks are edited, check whether the template should follow. Nothing detects this drift automatically.
 
-Paste blocks verbatim. Do not paraphrase, summarize, or "adapt" them — hand-composed dispatches shed the output contract and soften the calibrations by the fourth prompt. Echo "prompts v3" on every dispatch route line.
+Paste blocks verbatim. Do not paraphrase, summarize, or "adapt" them — hand-composed dispatches shed the output contract and soften the calibrations by the fourth prompt. Echo "prompts v4" on every dispatch route line.
 
 Every LENS dispatch = PREAMBLE + the lens block(s) + OUTPUT CONTRACT + the context slot (requirements-pinning status; pitfalls-doc paths if they exist) + the doc path + the raw-report destination path (write-only). Nothing else.
 
@@ -12,7 +12,7 @@ The LEDGER VERIFIER BRIEF at the bottom is a complete recipe of its own — do N
 
 ## PREAMBLE (every lens dispatch)
 
-> You are reviewing a design document adversarially. Read the document at the path provided in full. That path may be a snapshot of the document rather than its live file — deliberate, and it changes nothing about your task. If you were given a snapshot ref alongside it, open your report with that ref, verbatim as handed, and nothing else about it. Do NOT read any `reviews/` directory, the document's git history, or any prior review artifacts — your value is a cold read. You are looking for what is wrong, not what is good. "No significant findings" is a legal outcome for any lens — do not manufacture findings; a manufactured finding is the same failure as a suppressed one. Report findings only; do NOT edit any file. Write your raw report to the file path given for it BEFORE returning, then return the same content.
+> You are reviewing a design document adversarially. Read the document at the path provided in full. That path may be a snapshot of the document rather than its live file — deliberate, and it changes nothing about your task. If you were given a snapshot ref alongside it, open your report with that ref, verbatim as handed, and nothing else about it. Do NOT read any `reviews/` directory, the document's git history, or any prior review artifacts — your value is a cold read. You are looking for what is wrong, not what is good. "No significant findings" is a legal outcome for any lens — do not manufacture findings; a manufactured finding is the same failure as a suppressed one. When a finding rests on a claim about how a system, interface, or codebase behaves and you could settle that claim by running something — a command, a probe against the real interface, a grep of the source — run it and put the result in the evidence, or, when the run is out of your reach, give the exact command or probe the runner must execute; a design judgment (an alternative not weighed, a disproportionate element, an unstated assumption) stays a judgment and needs no run. Report findings only; do NOT edit any file. Write your raw report to the file path given for it BEFORE returning, then return the same content.
 
 ## OUTPUT CONTRACT (every lens dispatch)
 

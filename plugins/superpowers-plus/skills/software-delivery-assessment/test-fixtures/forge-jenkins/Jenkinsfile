@@ -1,0 +1,8 @@
+pipeline {
+  agent any
+  stages {
+    stage('Build') { steps { echo 'build artifact once' } }
+    stage('Verify') { steps { echo 'verify built artifact' } }
+    stage('Promote') { steps { echo 'promote same artifact through authorized route' } }
+  }
+}

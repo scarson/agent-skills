@@ -1,0 +1,12 @@
+[
+  {
+    "case_id": "snapshot-cycle",
+    "evidence_class": "root_and_addendum_graph",
+    "claim_state": "demonstrated",
+    "assertion": "affirmative_later_evidence_validates_target",
+    "limitations": ["bounded_result_window"],
+    "disposition": "supported_capability",
+    "status_effect": "complete_when_all_declared_targets_close",
+    "recommendation_shape": "authorized_plan_without_implementation"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "case_id": "solo-pre-release",
+    "evidence_class": "repository_and_dynamic",
+    "claim_state": "demonstrated",
+    "assertion": "local_verification_passes",
+    "limitations": ["no_operational_history"],
+    "disposition": "supported_capability",
+    "status_effect": "none",
+    "recommendation_shape": "evidence_roadmap_for_first_delivery"
+  }
+]

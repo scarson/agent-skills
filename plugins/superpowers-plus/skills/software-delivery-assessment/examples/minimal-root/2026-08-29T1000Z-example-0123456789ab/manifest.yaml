@@ -1,0 +1,59 @@
+{
+  "method_version": "1.0",
+  "artifact_schema_version": 1,
+  "run_id": "2026-08-29T1000Z-example-0123456789ab",
+  "run_kind": "root",
+  "status": "blocked",
+  "closed": false,
+  "anchored_at": "2026-08-29T10:00:00Z",
+  "artifact_host": "example://forge-jenkins",
+  "output_subtree": "docs/delivery-assessments/2026-08-29T1000Z-example-0123456789ab",
+  "index_path": "addenda/index.jsonl",
+  "scope": { "slug": "example", "paths": ["README.md", "Jenkinsfile", ".github/workflows/release.yml"] },
+  "delivery_units": [{ "unit_id": "example-unit", "paths": ["Jenkinsfile", ".github/workflows/release.yml"] }],
+  "repository_anchor": { "identity": "example-forge-jenkins", "assessed_revision": "example-baseline-1", "current_revision": "example-baseline-1", "artifact_only_ancestry": [] },
+  "working_tree_state": "clean",
+  "working_tree_inventory": [],
+  "snapshot_id": "snap-sha256-b07ce1877997c9b28132c445ada73867205f0e83df926a7ef172014f11746ed8",
+  "fingerprint_method": "sha256-path-bytes-v1",
+  "fingerprint_scope": { "complete": true, "included_paths": [".github/workflows/release.yml", "Jenkinsfile", "README.md"], "handled_paths": [], "exclusions": [".git", "docs/delivery-assessments/2026-08-29T1000Z-example-0123456789ab"] },
+  "pre_fingerprint": "b07ce1877997c9b28132c445ada73867205f0e83df926a7ef172014f11746ed8",
+  "post_fingerprint": "b07ce1877997c9b28132c445ada73867205f0e83df926a7ef172014f11746ed8",
+  "lane_snapshot_ids": [],
+  "truncated_surface": [],
+  "traversal_bounds": { "max_files": 1000, "max_bytes": 10000000, "max_depth": 20 },
+  "isolation_used": false,
+  "not_isolated": true,
+  "execution_controls_applied": [],
+  "remained_reachable": [],
+  "source_capabilities": [
+    { "source_id": "ci-history-permission", "capability_state": "denied" },
+    { "source_id": "ci-history-retention", "capability_state": "confirmed" }
+  ],
+  "material_sources": [
+    { "source_id": "ci-history-permission", "material": true, "outcome": "blocked", "affected_conclusion_ids": ["cl-ci-history-assessable"], "evidence_ids": ["ev-ci-history-permission", "ev-ci-history-assessable"] },
+    { "source_id": "ci-history-retention", "material": true, "outcome": "covered", "affected_conclusion_ids": ["cl-ci-history-assessable"], "evidence_ids": ["ev-ci-history-retention", "ev-ci-history-assessable"] }
+  ],
+  "lenses": [
+    { "lens": "flow_and_integration", "disposition": "supplemental", "outcome": "unassessed", "reason": "the material CI-history gate blocked broader analysis" },
+    { "lens": "ci_and_artifact_handling", "disposition": "required", "outcome": "failed", "reason": "the named CI-history surface denied read access" },
+    { "lens": "testing", "disposition": "required", "outcome": "unassessed", "reason": "routine CI test execution remains unavailable" },
+    { "lens": "release_and_operations", "disposition": "supplemental", "outcome": "unassessed", "reason": "the run stopped at material preflight" },
+    { "lens": "system_structure", "disposition": "supplemental", "outcome": "unassessed", "reason": "the run stopped at material preflight" }
+  ],
+  "persistence_mode": "write_only",
+  "commit_authorized": false,
+  "authorized_stage_paths": [],
+  "plan_persistence_authorized": false,
+  "authorized_plan_paths": [],
+  "relations": [],
+  "resume_anchors": {
+    "repository": { "identity": "example-forge-jenkins", "revision": "example-baseline-1" },
+    "working_tree_inventory": [],
+    "scope": { "slug": "example", "unit_ids": ["example-unit"] },
+    "source_windows": [
+      { "predicate": "read_ci_history", "source_identity": { "provider": "jenkins", "object_type": "job", "opaque_object_id": "delivery-main" }, "collection_window": { "start": "2026-08-20T10:00:00Z", "end": "2026-08-20T10:05:00Z" }, "result_window": { "start": "2026-05-01T00:00:00Z", "end": "2026-08-20T10:00:00Z" }, "freshness_class": "current" },
+      { "predicate": "read_ci_retention", "source_identity": { "provider": "jenkins", "object_type": "job", "opaque_object_id": "delivery-main" }, "collection_window": { "start": "2026-08-20T10:00:00Z", "end": "2026-08-20T10:05:00Z" }, "result_window": { "start": "2026-05-01T00:00:00Z", "end": "2026-08-20T10:00:00Z" }, "freshness_class": "current" }
+    ]
+  }
+}

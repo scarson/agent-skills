@@ -1,0 +1,22 @@
+name: shared-delivery
+on:
+  pull_request:
+    paths:
+      - services/catalog/**
+      - libraries/formatting/**
+jobs:
+  shared-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "verify each changed delivery unit"
+  agentic-policy:
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'agentic-service') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "check adopted contract, bounded paths, and product evaluations"
+  promote-agentic-service:
+    needs: [shared-verification, agentic-policy]
+    runs-on: ubuntu-latest
+    environment: agentic-service-release-control
+    steps:
+      - run: echo "promotion is independently controlled"

@@ -111,9 +111,15 @@ This skill is designed to compose with the other `project-setup` skills:
 
 - **`git-strategy-init`** — installs `docs/git-strategy.md`. The agent-md template's "Keeping a clean git graph" section references this file.
 - **`pitfalls-docs-init`** — installs `docs/pitfalls/implementation-pitfalls.md` and `docs/pitfalls/testing-pitfalls.md`. The agent-md template's "Language / Framework Gotchas" and "Development Workflow" sections reference these.
-- **`project-init`** — wrapper that sequences all three init skills for one-command bootstrap. `claude-agents-md-init` runs first so later skills have well-formed CLAUDE.md + AGENTS.md files to append references into.
+- **`project-init`** — wrapper that runs this child before the other project-setup initializers so later skills have well-formed CLAUDE.md + AGENTS.md files and can consume its structured result.
 
 Each sub-skill has zero hard dependencies on the others — references that don't yet resolve are dangling until the companion skill runs, which is acceptable because the files are read by a human+agent pair who will notice and unblock.
+
+## Transaction and wrapper result
+
+The skill keeps its detailed human report, then ends every terminal path with one `PROJECT_SETUP_CHILD_RESULT_V1` block for `project-setup/claude-agents-md-init`. `project-init` uses that block to distinguish a verified change or no-op from a user skip, a no-change block, a restored failure, or uncertain partial state.
+
+All confirmed document, durable-backup, and required parent-directory outputs use the shared project-setup lock, exact proposal binding, receipts, and verified restoration contract. Timestamped user backups remain planned durable outputs; they are separate from ephemeral transaction originals. A no-op requires substantive semantic validation and an empty byte/topology diff, not marker alignment alone. The multi-file update is recoverable and verified, not globally atomic.
 
 ## Design decisions
 
@@ -277,6 +283,9 @@ That order matters because the document is read linearly by humans and agents al
   Alignment markers unchanged — v2.1–v2.11 files remain `TEMPLATE_ALIGNED`. Existing projects do NOT auto-update; re-run the skill or hand-port. A personal-mode re-run produces a near-empty diff. Bumps: skill `2.11 → 2.12`, plugin `0.11.0 → 0.12.0`.
 
 - **v2.13** (2026-08) — named `docs/handoffs/` in the template, so the layout it teaches covers the one artifact type it previously left unplaced. §Project Layout's Shape A tree annotates `docs/` with handoffs alongside plans, pitfalls, and design docs, and the `ROUTER: superpowers-plus` block gained a `superpowers-plus:handoff` row carrying the trigger and the destination (`docs/handoffs/<date>-<topic>-handoff.md`). The row is plus-only because no base-`superpowers` equivalent exists; the `superpowers-base` and `none` blocks are unchanged. Companion to `superpowers-plus` 0.39.0 → 0.40.2 (0.40.0 plus two Codex-review patches), which pins that path in the `handoff` skill itself — previously the skill named no output location at all, and agents fell back to whichever artifact directory a project happened to have populated, most often `docs/plans/`. Alignment markers unchanged; v2.1–v2.12 files remain `TEMPLATE_ALIGNED`. Existing projects do NOT auto-update; re-run the skill or hand-port the two lines. Bumps: skill `2.12 → 2.13`, plugin `0.12.0 → 0.13.2` (the two patch releases fold in Codex-review fixes: two places in SKILL.md reported the plus block's router rows as a fixed pair, which the third row made stale, and this entry's own companion-version reference had gone stale).
+
+- **v2.14** (2026-08) — retained the detailed human report while adding the shared recoverable transaction and `PROJECT_SETUP_CHILD_RESULT_V1` contract consumed by `project-init`. Declines, verified no-ops, blocks, no-change failures, verified restoration, and uncertain partial states now have explicit terminal outcomes. Durable user backups remain planned outputs and content-preservation inputs; they are not confused with ephemeral rollback originals or `restoredPaths`. Multi-file wording no longer claims global atomicity; this supersedes v2.4's shorthand description of the three-artifact write as atomic.
+- **v2.15** (2026-08) — aligned shared application safety with the practical cross-platform contract: this child owns complete discovery and lock-time revalidation; ordinary unlinked files use exact bytes, kind, link disposition, and safely supported metadata without OS-forensic file IDs or native ACL hashes; linked, junction, and reparse targets fail closed. Generated guidance templates are unchanged, so existing project documents need no content migration.
 
 ## References
 
