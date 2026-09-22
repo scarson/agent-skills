@@ -1,0 +1,20 @@
+[
+  {
+    "id": "context-a",
+    "facts": {
+      "lifecycle": "pre_release",
+      "ci_capacity": "constrained",
+      "concurrency": "single_team",
+      "release_frequency": "weekly"
+    }
+  },
+  {
+    "id": "context-b",
+    "facts": {
+      "lifecycle": "operational",
+      "ci_capacity": "elastic",
+      "concurrency": "multiple_teams",
+      "release_frequency": "daily"
+    }
+  }
+]

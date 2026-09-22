@@ -79,6 +79,8 @@ Used by: `skills/brainstorming-enhanced/SKILL.md` §Terminology · `skills/bug-h
 `skills/health-review-cycle/SKILL.md` §Terminology · `skills/performance-audit-cycle/SKILL.md` §Terminology ·
 `skills/performance-audit/SKILL.md` §Terminology · `skills/plan-review-cycle/SKILL.md` §Terminology ·
 `skills/project-health-review/SKILL.md` §Terminology · `skills/wire-walk/SKILL.md` §Terminology ·
+`skills/software-delivery-assessment/SKILL.md` §Terminology ·
+`skills/software-delivery-assessment-cycle/SKILL.md` §Terminology ·
 `skills/writing-plans-enhanced/SKILL.md` §Terminology ·
 `skills/writing-skills-enhanced/SKILL.md` §Terminology
 

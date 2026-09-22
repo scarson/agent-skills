@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "name": "positive-stable-catalog-label",
+      "task_input": {
+        "unit": "services/catalog",
+        "product_id": "product-17",
+        "prior_label": "Catalog item 17"
+      },
+      "task_expected": {
+        "result": "Catalog item 17",
+        "contract_state": "preserved"
+      }
+    },
+    {
+      "name": "negative-unknown-catalog-label",
+      "task_input": {
+        "unit": "services/catalog",
+        "product_id": "unknown-product"
+      },
+      "task_expected": {
+        "result": "not-found",
+        "internal_detail_exposed": false
+      }
+    }
+  ]
+}

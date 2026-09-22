@@ -1,0 +1,9 @@
+name: stale-release
+on:
+  workflow_dispatch:
+jobs:
+  disabled-release:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo rebuild-and-release-disabled

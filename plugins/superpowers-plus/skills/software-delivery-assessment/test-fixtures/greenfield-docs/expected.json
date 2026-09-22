@@ -1,0 +1,5 @@
+[
+  { "case_id": "external-pipeline-claimed", "evidence_class": "documentation_declared", "claim_state": "claimed", "assertion": "external_pipeline_exists", "limitations": ["external_configuration_unobserved"], "disposition": "not_verifiable", "status_effect": "blocked_or_accepted_partial_if_material", "recommendation_shape": "obtain_read_only_pipeline_evidence" },
+  { "case_id": "greenfield-no-history", "evidence_class": "repository_observed", "claim_state": "unknown", "assertion": "delivery_metrics_available", "limitations": ["no_operational_history"], "disposition": "not_verifiable", "status_effect": "none", "recommendation_shape": "define_event_measurement_roadmap" },
+  { "case_id": "docs-only", "evidence_class": "repository_observed", "claim_state": "configured", "assertion": "application_runtime_controls_apply", "limitations": [], "disposition": "not_applicable", "status_effect": "none", "recommendation_shape": "documentation_specific_checks" }
+]

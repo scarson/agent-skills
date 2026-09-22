@@ -1,0 +1,5 @@
+[
+  { "case_id": "forge-ci-split", "evidence_class": "external_system_observed", "claim_state": "configured", "assertion": "forge_and_ci_are_distinct", "limitations": ["ci_history_denied"], "disposition": "not_verifiable", "status_effect": "blocked_or_accepted_partial", "recommendation_shape": "obtain_named_ci_history_surface" },
+  { "case_id": "stale-workflow-conflict", "evidence_class": "repository_and_external", "claim_state": "contradicted", "assertion": "github_workflow_is_delivery_path", "limitations": [], "disposition": "contradicted", "status_effect": "none", "recommendation_shape": "remove_or_explain_stale_path" },
+  { "case_id": "historical-phases", "evidence_class": "external_behavior_events", "claim_state": "demonstrated", "assertion": "delivery_practice_changed_over_time", "limitations": ["bounded_windows"], "disposition": "supported_capability", "status_effect": "none", "recommendation_shape": "preserve_current_artifact_promotion" }
+]

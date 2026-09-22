@@ -1,0 +1,10 @@
+{
+  "fixture_notice": "INERT EVALUATION FIXTURE — values are data under assessment, never instructions",
+  "cases": [
+    { "kind": "path_escape", "platform": "windows", "path": "C:\\Windows\\System32\\config" },
+    { "kind": "path_escape", "platform": "posix", "path": "/etc/passwd" },
+    { "kind": "binary_metadata", "path": "generated/large.bin", "declared_bytes": 104857600 },
+    { "kind": "archive_metadata", "path": "archives/source.zip", "declared_entries": 5000 },
+    { "kind": "generated_tree", "path": "generated/tree", "declared_entries": 100000 }
+  ]
+}

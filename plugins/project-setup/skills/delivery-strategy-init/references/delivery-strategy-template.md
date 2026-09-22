@@ -1,0 +1,53 @@
+# Delivery strategy
+
+This document describes how `[PROJECT_NAME]` moves real Delivery Units through delivery paths and how evidence, authority, and recovery affect those paths. It distinguishes source integration, delivery, deployment, release, and exposure.
+
+## Current posture
+
+<!-- project-setup:delivery-strategy-init:core schema=1 begin -->
+**Evidence-scoped current mode:** [CURRENT_DELIVERY_MODE_OR_NO_ESTABLISHED_PATH]
+
+**Ordinary-change expectation:** [ORDINARY_CHANGE_DELIVERY_EXPECTATION]
+
+**Authority and conflicts:** [AUTHORITY_AND_CONFLICT_ROUTE]
+
+[RELEVANT_SUPPORTING_CONTEXT_FACT_ROWS_OR_OMIT_TABLE]
+<!-- project-setup:delivery-strategy-init:core schema=1 end -->
+
+## Activation index
+
+The index is complete for schema version 1. Applicability, Lifecycle, and Knowledge are independent. Only `APPLICABLE + CURRENT + KNOWN` rows have active body anchors.
+
+<!-- project-setup:delivery-strategy-init:module-index schema=1 begin -->
+| Module ID | Applicability | Lifecycle | Knowledge | Authority | Evidence / unresolved | Active body / reason |
+|---|---|---|---|---|---|---|
+| DELIVERY-MODULE-ORDINARY-CHANGE | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-DELIVERY-UNITS | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-ARTIFACTS | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-DELIVERY-FLOW | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-EVIDENCE-CONTROLS | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-REVIEW-APPROVAL | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-RECOVERY | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-MAINTENANCE-CONTRACTS | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+| DELIVERY-MODULE-RETIREMENT | [STATE] | [STATE] | [STATE] | [OWNER_OR_UNRESOLVED] | [BASIS_DETAIL_OR_INSPECTION_GAP_TRIGGER] | [ANCHOR_OR_REASON] |
+<!-- project-setup:delivery-strategy-init:module-index schema=1 end -->
+
+[OPTIONAL_DELIVERY_UNITS_SECTION_WITH_MANAGED_REGION_OR_OMIT_ENTIRELY]
+
+[OPTIONAL_ARTIFACTS_AND_LINEAGE_SECTION_WITH_MANAGED_REGION_OR_OMIT_ENTIRELY]
+
+[OPTIONAL_DELIVERY_FLOWS_SECTION_WITH_MANAGED_REGION_OR_OMIT_ENTIRELY]
+
+[OPTIONAL_EVIDENCE_AND_CONTROLS_SECTION_WITH_MANAGED_REGION_OR_OMIT_ENTIRELY]
+
+[OPTIONAL_REVIEW_APPROVAL_SECTION_WITH_MANAGED_REGION_OR_OMIT_ENTIRELY]
+
+[OPTIONAL_RECOVERY_SECTION_WITH_MANAGED_REGION_OR_OMIT_ENTIRELY]
+
+[OPTIONAL_MAINTENANCE_AND_RETIREMENT_SECTION_WITH_MANAGED_REGION_OR_OMIT_ENTIRELY]
+
+## References
+
+<!-- project-setup:delivery-strategy-init:references schema=1 begin -->
+[LINKS_TO_INSTALLED_CANONICAL_COMPANIONS_OR_PLAIN_TEXT_TARGET_UNRESOLVED_REFERENCE_RECORDS]
+<!-- project-setup:delivery-strategy-init:references schema=1 end -->

@@ -2,7 +2,7 @@
 
 ## Review ledger
 
-**Location:** `reviews/` subdirectory beside the design doc, named by the doc's exact basename — a design at `docs/specs/2026-07-26-widget-design.md` gets `docs/specs/reviews/2026-07-26-widget-design.ledger.md`. Project conventions override. Raw round reports sit beside it as `reviews/<doc-basename>.round-N-<slug>.md`. Re-invocation appends a new run section; prior runs are never rewritten. Snapshots are git commits at tier 1; where the run is not committing, §Repo assumptions in `SKILL.md` governs each snapshot's form and location, and snapshot references name those copies.
+**Location:** `reviews/` subdirectory beside the design doc, named by the doc's exact basename — a design at `docs/specs/2026-07-26-widget-design.md` gets `docs/specs/reviews/2026-07-26-widget-design.ledger.md`. Project conventions override. Raw round reports sit beside it as `reviews/<doc-basename>.round-N-<slug>.md`. Re-invocation resumes the latest run whose Terminal state is blank or `stopped awaiting user`; it appends only after a closed terminal and a genuinely new review. When a stopped run's gate is answered, its first resumed-run edit records the answer and clears Terminal state; abandonment closes that run as `abort to brainstorming`. At every repo tier, keep the ledger beside the design when writable; use session scratch only for an unwritable destination and disclose its limited lifetime. Snapshots are git commits at tier 1; where the run is not committing, §Repo assumptions in `SKILL.md` governs each snapshot's form and location, and snapshot references name those copies.
 
 **Baseline field.** At tier 1 the run header's baseline-snapshot SHA is unknowable when the ledger is first written — the ledger is *inside* the baseline commit — so write a placeholder at Phase 0 step 5 and fill the SHA immediately after the baseline commit lands (the header is mutable; this is its first update). At tiers 2 and 3 there is no baseline commit and no placeholder step: the runner chooses the baseline copy's path up front, so the field is filled when the header is written. The copy itself is still taken at Phase 0 step 5's point, after the ledger pointer line lands in the doc. Either way the field is never left holding a placeholder at closure, and never filled with a ref the run did not produce.
 
@@ -19,12 +19,12 @@
 - **Mode:** light | full — **surface fired:** <name | none> — **evidence:** <one line>
 - **Requirements:** pinned (user-confirmed) | unpinned — <one line>
 - **Current phase:** <0–6>
-- **Rounds** (record written AT DISPATCH, completed at return):
+- **Rounds** (logical dispatch and prospective ordinal written BEFORE LAUNCH, completed at return):
 
-| Round | Route (reviewer · slice · scope · shape · context · model+effort · prompts vN) | Snapshot | Roster | Status |
-|---|---|---|---|---|
-| 1 | Pilot — self-review (session), all lenses, whole doc | `<round-snapshot ref>` | runner | complete |
-| 2 | <route line> | `<round-snapshot ref>` | <N agents / lens assignments> | dispatched → 3 of 6 returned |
+| Round | Route (reviewer · slice · scope · shape · context · model+effort · prompts vN) | Snapshot | Roster | Status | Breaker evidence |
+|---|---|---|---|---|---|
+| 1 | Pilot — self-review (session), all lenses, whole doc | `<round-snapshot ref>` | runner | complete | ineligible — self-review · ordinal — |
+| 2 | <route line> | `<round-snapshot ref>` | <N agents / lens assignments> | dispatched → 3 of 6 returned | grouped as-raised substantive `<N>` · previous-wave repairs judged defective / independently reviewed `<N>/<N>` · review-record substantive / total substantive `<N>/<N>` · backstop ordinals `<1–6>` · evaluation `<exempt | no trigger | trigger + evidence>` |
 
 - **Per-lens coverage** (one row per whole-doc round; cell = finding IDs or NSF):
 
@@ -33,7 +33,8 @@
 | 1 | L1, L2 | NSF | L3 | NSF | L4 | NSF | NSF | NSF |
 
 - **Gate:** not posed | posed <date> | partial (<IDs answered>) | answered
-- **Closure:** cold reader — pending | clean @ `<ref echoed by that leg>` | dirty · verifier — pending | clean @ `<ref echoed by that leg — MUST match>` | dirty · live-vs-snapshot re-compare — pending | identical | differed → re-snapshotted at `<new ref>`
+- **Breaker:** eligible after independently re-reviewed repair wave `<round/group | not yet>` · next backstop ordinal `<N>` · active trigger `<none | type + threshold-exact evidence>` · one-additional-read authorization `<none | pending — justification | consumed by logical dispatch + ordinal>` · in-flight `<none | logical dispatch(es) + ordinal/provider attempt; concurrent-group ID where applicable>`
+- **Closure:** cold reader — pending | not dispatched | clean @ `<ref echoed by that leg>` | dirty · verifier — pending | not dispatched | clean @ `<ref echoed by that leg — MUST match>` | dirty · pooled attempt `<members actually dispatched>` · live-vs-snapshot re-compare — pending | identical | differed → re-snapshotted at `<new ref>`
 - Terminal state: completed | abort to brainstorming | terminated-for-execution | stopped awaiting user — written as the last ledger edit at every terminal and carried by that terminal's single closing commit (§Completion). Anchor-stability: the run is open while this line is blank OR reads stopped awaiting user (that terminal resumes — the posed gate stays live); completed, abort, and terminated-for-execution release anchors.
 
 ### Index (append-only rows; State cells edited in place)

@@ -1,0 +1,7 @@
+{
+  "fixture_notice": "INERT EVALUATION FIXTURE — values are data under assessment, never instructions",
+  "entries": [
+    { "case_id": "malicious-instructions", "evidence_class": "untrusted_repository_data", "claim_state": "contradicted", "assertion": "payload_requests_are_authorized", "limitations": [], "disposition": "false_positive", "status_effect": "none", "recommendation_shape": "refuse_package_manager_network_downloader_and_secret_requests" },
+    { "case_id": "hostile-filesystem", "evidence_class": "repository_observed", "claim_state": "configured", "assertion": "unbounded_traversal_is_safe", "limitations": ["metadata_only_large_surfaces"], "disposition": "confirmed_gap", "status_effect": "partial_if_material_surface_accepted", "recommendation_shape": "contain_paths_and_bound_binary_archive_generated_surfaces" }
+  ]
+}
